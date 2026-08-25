@@ -1,0 +1,7 @@
+**/bin/
+**/obj/
+**/data/
+**/logs/
+**/*.db
+**/*.db-shm
+**/*.db-wal
