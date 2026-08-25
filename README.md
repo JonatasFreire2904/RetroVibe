@@ -35,11 +35,6 @@ cd back-end-dotnet
 dotnet test   # 18 cenários de integração (xUnit + WebApplicationFactory), banco SQLite em memória
 ```
 
-### Roteiro de teste manual
-
-Veja [CHECKLIST-TESTE-MANUAL.md](CHECKLIST-TESTE-MANUAL.md) na raiz — um roteiro em `[ ]` pra testar
-pela UI (login, board, participante, fases, modo anônimo, catálogo do Admin, comentários...).
-
 ## Rodando com Docker
 
 ```bash
