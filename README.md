@@ -44,6 +44,10 @@ docker compose up --build
 - Back-end: http://localhost:3333 (roda migrations + seed automaticamente na primeira subida, o banco fica em um volume persistente)
 - Front-end: http://localhost:5173
 
+## Publicação no Railway
+
+Veja [docs/railway.md](docs/railway.md) para publicar a interface e a API em um único serviço com SQLite persistente.
+
 ## Login
 
 Três papéis (RF001): **Administrador**, **Facilitador** e **Participante**. Não há cadastro pela UI

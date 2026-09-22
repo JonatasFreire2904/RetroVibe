@@ -71,6 +71,45 @@ public sealed class ApiTests : IDisposable
     }
 
     [Fact]
+    public async Task SequentialRetroAdvancesColumnsForAllParticipantsBeforeVoting()
+    {
+        var token = await LoginAsync("marcos");
+        var create = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/sessions", token,
+            new { templateId = "start-stop-continue", squadName = "Phoenix", sequentialFlow = true }));
+        create.EnsureSuccessStatusCode();
+        var board = (await create.Content.ReadFromJsonAsync<SessionBoardDto>(JsonHelper.Options))!;
+        Assert.True(board.SequentialFlow);
+        Assert.Equal(0, board.ActiveColumnIndex);
+
+        var futureCard = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{board.Id}/cards", token,
+            new { columnId = board.Columns[1].Id, text = "Ainda não" }));
+        Assert.Equal(HttpStatusCode.Conflict, futureCard.StatusCode);
+
+        var firstCard = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{board.Id}/cards", token,
+            new { columnId = board.Columns[0].Id, text = "Começar a testar" }));
+        Assert.Equal(HttpStatusCode.Created, firstCard.StatusCode);
+
+        var advance = await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{board.Id}/phase", token));
+        advance.EnsureSuccessStatusCode();
+        var get = await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/sessions/{board.Id}", token));
+        get.EnsureSuccessStatusCode();
+        var current = (await get.Content.ReadFromJsonAsync<SessionBoardDto>(JsonHelper.Options))!;
+        Assert.Equal(1, current.ActiveColumnIndex);
+        Assert.Equal(RetroVibe.Domain.Entities.SessionPhase.Collecting, current.Phase);
+
+        var priorCard = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{board.Id}/cards", token,
+            new { columnId = board.Columns[0].Id, text = "Mais um card" }));
+        Assert.Equal(HttpStatusCode.Created, priorCard.StatusCode);
+
+        await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{board.Id}/phase", token));
+        var voting = await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{board.Id}/phase", token));
+        voting.EnsureSuccessStatusCode();
+        var votingBoard = (await voting.Content.ReadFromJsonAsync<SessionBoardDto>(JsonHelper.Options))!;
+        Assert.Equal(2, votingBoard.ActiveColumnIndex);
+        Assert.Equal(RetroVibe.Domain.Entities.SessionPhase.Voting, votingBoard.Phase);
+    }
+
+    [Fact]
     public async Task ForcesFacilitatorToCreateSessionsOnlyInOwnSquad()
     {
         var token = await LoginAsync("joao");

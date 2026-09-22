@@ -1,83 +1,122 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import type { SessionColumn } from "@/shared/types";
-import { PlusIcon } from "@/shared/ui/Icons";
+import type { RetroColumnAppearance, RetroTheme } from "../retroTheme";
 import { RetroCardItem } from "./RetroCardItem";
+import { ThemeTrim } from "./ThemeTrim";
 
 interface BoardColumnProps {
   sessionId: string;
   column: SessionColumn;
+  appearance: RetroColumnAppearance;
+  theme: RetroTheme;
+  isCurrent: boolean;
+  isFuture: boolean;
+  isDone: boolean;
   canAddCard: boolean;
   canVote: boolean;
   canEditOwnCards: boolean;
-  onVote: (cardId: string) => void;
-  onAddCard: (text: string) => void;
-  onEditCard: (cardId: string, text: string) => void;
   isAddingCard: boolean;
+  isAdvancing: boolean;
+  advanceLabel?: string;
+  onAdvance?: () => void;
+  onVote: (cardId: string) => void;
+  onAddCard: (text: string) => Promise<void>;
+  onEditCard: (cardId: string, text: string) => void;
 }
 
 export function BoardColumn({
-  sessionId,
-  column,
-  canAddCard,
-  canVote,
-  canEditOwnCards,
-  onVote,
-  onAddCard,
-  onEditCard,
-  isAddingCard,
+  sessionId, column, appearance, theme, isCurrent, isFuture, isDone, canAddCard, canVote,
+  canEditOwnCards, isAddingCard, isAdvancing, advanceLabel, onAdvance, onVote, onAddCard, onEditCard,
 }: BoardColumnProps) {
   const [draft, setDraft] = useState("");
+  const [composing, setComposing] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
 
-  function submit() {
+  async function submit() {
     const text = draft.trim();
-    if (!text) return;
-    onAddCard(text);
-    setDraft("");
+    if (!text || isAddingCard) return;
+    setSubmitError(false);
+    try {
+      await onAddCard(text);
+      setDraft("");
+      setComposing(false);
+    } catch {
+      setSubmitError(true);
+    }
   }
 
-  return (
-    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
-        <span className="flex items-center gap-2 text-sm font-bold text-slate-800">
-          <span>{column.icon}</span>
-          {column.label}
-        </span>
-        <span className="font-mono text-xs text-violet-500">{column.cards.length}</span>
-      </div>
+  const style = {
+    "--retro-column-bg": appearance.background,
+    "--retro-column-border": appearance.border,
+    "--retro-column-accent": appearance.accent,
+    "--retro-card-bg": appearance.card,
+  } as CSSProperties;
 
-      <div className="flex-1 space-y-3">
+  return (
+    <article className={`retro-column ${isCurrent ? "retro-column--current" : ""} ${isFuture ? "retro-column--future" : ""}`} style={style}>
+      <ThemeTrim decor={theme.decor} small />
+      <header className="retro-column-heading">
+        <div className="retro-column-kicker">
+          <span className="retro-column-icon">{appearance.icon}</span>
+          {isCurrent && <span className="retro-column-status">ATIVO</span>}
+          {isDone && <span className="retro-column-status retro-column-status--done">✓ FEITO</span>}
+          <span className="retro-column-count">{column.cards.length}</span>
+        </div>
+        <h2>{appearance.label}</h2>
+        <p>{appearance.prompt}</p>
+        <div className="retro-column-rule" />
+      </header>
+
+      <div className="retro-column-content">
         {column.cards.map((card) => (
           <RetroCardItem
             key={card.id}
             sessionId={sessionId}
             card={card}
+            theme={theme}
+            blurred={isFuture}
             canVote={canVote}
             canEdit={canEditOwnCards && card.isMine}
             onVote={() => onVote(card.id)}
             onEdit={(text) => onEditCard(card.id, text)}
           />
         ))}
-        {column.cards.length === 0 && <p className="py-6 text-center text-xs text-slate-300">Nenhum item ainda</p>}
+
+        {isFuture && <p className="retro-column-wait">🔒 Aguardando etapa anterior</p>}
+
+        {canAddCard && (composing ? (
+          <div className="retro-card-composer">
+            <textarea
+              autoFocus
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if ((event.ctrlKey || event.metaKey) && event.key === "Enter") void submit();
+                if (event.key === "Escape") setComposing(false);
+              }}
+              placeholder={theme.key === "natal" ? "O que você quer contar ao Papai Noel?" : appearance.prompt}
+              rows={3}
+            />
+            {submitError && <p className="retro-composer-error">Não foi possível adicionar. Tente novamente.</p>}
+            <div className="retro-composer-actions">
+              <button type="button" onClick={() => void submit()} disabled={!draft.trim() || isAddingCard}>
+                {appearance.icon} Adicionar
+              </button>
+              <button type="button" className="retro-composer-cancel" onClick={() => setComposing(false)}>Cancelar</button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" className="retro-add-card" onClick={() => setComposing(true)}>
+            <span aria-hidden="true">＋</span> {theme.addLabel}
+          </button>
+        ))}
       </div>
 
-      {canAddCard && (
-        <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submit()}
-            placeholder="Adicionar item..."
-            className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none placeholder:text-slate-400 focus:border-violet-400"
-          />
-          <button
-            onClick={submit}
-            disabled={isAddingCard || !draft.trim()}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-600 transition hover:bg-violet-200 disabled:opacity-40"
-          >
-            <PlusIcon width={14} height={14} />
-          </button>
-        </div>
+      {onAdvance && advanceLabel && (
+        <button type="button" className="retro-column-advance" disabled={isAdvancing} onClick={onAdvance}>
+          {isAdvancing ? "Avançando…" : advanceLabel} <span aria-hidden="true">›</span>
+        </button>
       )}
-    </div>
+    </article>
   );
 }

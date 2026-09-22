@@ -4,96 +4,63 @@ import { useCardCommentsQuery } from "@/modules/sessions/api/queries";
 import type { SessionCard } from "@/shared/types";
 import { CommentThread } from "@/shared/ui/CommentThread";
 import { MessageIcon, PencilIcon, ThumbsUpIcon } from "@/shared/ui/Icons";
+import type { RetroTheme } from "../retroTheme";
 
 interface RetroCardItemProps {
   sessionId: string;
   card: SessionCard;
+  theme: RetroTheme;
+  blurred: boolean;
   canVote: boolean;
   canEdit: boolean;
-  onVote?: () => void;
-  onEdit?: (text: string) => void;
+  onVote: () => void;
+  onEdit: (text: string) => void;
 }
 
-export function RetroCardItem({ sessionId, card, canVote, canEdit, onVote, onEdit }: RetroCardItemProps) {
+export function RetroCardItem({ sessionId, card, theme, blurred, canVote, canEdit, onVote, onEdit }: RetroCardItemProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(card.text);
   const [showComments, setShowComments] = useState(false);
-
   const commentsQuery = useCardCommentsQuery(sessionId, card.id, showComments);
   const addComment = useAddCommentMutation(sessionId);
 
-  function handleSave() {
+  function save() {
     const text = draft.trim();
-    if (!text || text === card.text) {
-      setEditing(false);
-      return;
-    }
-    onEdit?.(text);
+    if (text && text !== card.text) onEdit(text);
     setEditing(false);
   }
 
+  const author = card.authorId === null ? "Anônimo" : card.isMine ? "Você" : "Participante";
+
   return (
-    <div className="rounded-xl bg-violet-50/60 p-4">
-      {editing ? (
-        <div className="space-y-2">
-          <textarea
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={2}
-            className="w-full rounded-lg border border-violet-300 bg-white p-2 text-sm outline-none"
-          />
-          <div className="flex gap-2 text-xs">
-            <button onClick={handleSave} className="rounded-full bg-violet-600 px-2.5 py-1 font-semibold text-white">
-              Salvar
+    <div className="retro-card">
+      <div className={blurred ? "retro-card-obscured" : ""}>
+        {editing ? (
+          <div className="retro-card-edit">
+            <textarea autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} rows={3} />
+            <div>
+              <button type="button" onClick={save}>Salvar</button>
+              <button type="button" onClick={() => { setDraft(card.text); setEditing(false); }}>Cancelar</button>
+            </div>
+          </div>
+        ) : (
+          <p className="retro-card-text"><span aria-hidden="true">{theme.cardIcon}</span> {card.text}</p>
+        )}
+        <div className="retro-card-meta">
+          <span className="retro-card-author"><span className="retro-avatar">{author.charAt(0)}</span>{author}</span>
+          <div className="retro-card-actions">
+            <button type="button" aria-label={`Comentários: ${card.commentsCount}`} onClick={() => setShowComments(value => !value)}>
+              <MessageIcon width={13} height={13} /> {card.commentsCount}
             </button>
-            <button
-              onClick={() => {
-                setDraft(card.text);
-                setEditing(false);
-              }}
-              className="rounded-full bg-white px-2.5 py-1 font-semibold text-slate-500"
-            >
-              Cancelar
+            <button type="button" disabled={!canVote} aria-label={`Votos: ${card.votes}`} onClick={onVote}>
+              <ThumbsUpIcon width={13} height={13} /> {card.votes}
             </button>
+            {canEdit && !editing && <button type="button" aria-label="Editar card" onClick={() => setEditing(true)}><PencilIcon width={13} height={13} /></button>}
           </div>
         </div>
-      ) : (
-        <p className="text-sm text-slate-700">{card.text}</p>
-      )}
-
-      <div className="mt-3 flex items-center gap-4 text-xs text-slate-500">
-        <button
-          onClick={onVote}
-          disabled={!canVote}
-          className={`flex items-center gap-1 rounded-full px-2 py-1 font-mono transition ${
-            canVote ? "hover:bg-violet-100 hover:text-violet-600" : ""
-          }`}
-        >
-          <ThumbsUpIcon width={13} height={13} />
-          {card.votes} votos
-        </button>
-        <button
-          onClick={() => setShowComments((v) => !v)}
-          className={`flex items-center gap-1 rounded-full px-2 py-1 font-mono transition hover:bg-violet-100 hover:text-violet-600 ${
-            showComments ? "bg-violet-100 text-violet-600" : ""
-          }`}
-        >
-          <MessageIcon width={13} height={13} />
-          {card.commentsCount}
-        </button>
-        {canEdit && !editing && (
-          <button
-            onClick={() => setEditing(true)}
-            className="ml-auto flex items-center gap-1 text-violet-500 hover:text-violet-700"
-            title="Editar sua contribuição"
-          >
-            <PencilIcon width={13} height={13} />
-          </button>
-        )}
       </div>
-
-      {showComments && (
+      {blurred && <div className="retro-card-lock">🔒 Oculto até a votação</div>}
+      {showComments && !blurred && (
         <CommentThread
           comments={commentsQuery.data}
           isLoading={commentsQuery.isLoading}

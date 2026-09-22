@@ -8,6 +8,7 @@ import { Button } from "@/shared/ui/Button";
 import { Modal } from "@/shared/ui/Modal";
 import { SearchIcon } from "@/shared/ui/Icons";
 import { useCreateSessionMutation } from "../api/mutations";
+import { getRetroTheme } from "../retroTheme";
 
 interface CreateSessionModalProps {
   open: boolean;
@@ -22,6 +23,7 @@ export function CreateSessionModal({ open, onClose, defaultSquadName }: CreateSe
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [themeId, setThemeId] = useState<string | null>(null);
   const [privacyMode, setPrivacyMode] = useState<PrivacyMode>("IDENTIFIED");
+  const [sequentialFlow, setSequentialFlow] = useState(true);
 
   const { data: templates = [] } = useTemplatesQuery();
   const { data: themes = [] } = useThemesQuery();
@@ -43,6 +45,7 @@ export function CreateSessionModal({ open, onClose, defaultSquadName }: CreateSe
     setTemplateId(null);
     setThemeId(null);
     setPrivacyMode("IDENTIFIED");
+    setSequentialFlow(true);
     createSession.reset();
   }
 
@@ -59,6 +62,7 @@ export function CreateSessionModal({ open, onClose, defaultSquadName }: CreateSe
       themeId: themeId ?? undefined,
       squadName: squadName.trim(),
       privacyMode,
+      sequentialFlow,
     });
     reset();
     onClose();
@@ -73,8 +77,8 @@ export function CreateSessionModal({ open, onClose, defaultSquadName }: CreateSe
     <Modal
       open={open}
       onClose={handleClose}
-      title="Nova sessão de retrospectiva"
-      subtitle={step === 1 ? "Identifique o squad, o modelo e o tema" : "Confirme os detalhes da sessão"}
+      title={step === 1 ? "Nova sessão de retrospectiva" : "Configurações da sessão"}
+      subtitle={step === 1 ? "Identifique o squad, o modelo e o tema" : "Defina as regras de comportamento da sessão"}
       footer={
         step === 1 ? (
           <>
@@ -165,7 +169,7 @@ export function CreateSessionModal({ open, onClose, defaultSquadName }: CreateSe
                       : "border-slate-200 bg-violet-50/30 text-slate-600 hover:border-violet-200"
                   }`}
                 >
-                  <span>{theme.emoji}</span>
+                  <span>{getRetroTheme(theme.key).icon}</span>
                   <span>{theme.label}</span>
                 </button>
               ))}
@@ -201,15 +205,34 @@ export function CreateSessionModal({ open, onClose, defaultSquadName }: CreateSe
           </div>
         </div>
       ) : (
-        <div className="space-y-3 rounded-xl border border-slate-100 bg-violet-50/30 p-5">
+        <div className="space-y-4">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={sequentialFlow}
+            onClick={() => setSequentialFlow((value) => !value)}
+            className="flex w-full items-center justify-between gap-4 rounded-2xl border border-violet-100 bg-violet-50/60 p-4 text-left"
+          >
+            <span>
+              <span className="block text-sm font-bold text-slate-800">Fluxo sequencial de etapas</span>
+              <span className="mt-1 block text-xs leading-relaxed text-slate-500">
+                Os participantes concluem cada coluna antes de passar para a próxima. Desative para preencher todas ao mesmo tempo.
+              </span>
+            </span>
+            <span className={`relative h-6 w-11 shrink-0 rounded-full transition ${sequentialFlow ? "bg-violet-500" : "bg-slate-300"}`}>
+              <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${sequentialFlow ? "left-6" : "left-1"}`} />
+            </span>
+          </button>
+          <div className="space-y-3 rounded-xl border border-slate-100 bg-violet-50/30 p-5">
           {title.trim() && <SummaryRow label="Título" value={title.trim()} />}
           <SummaryRow label="Squad" value={squadName} />
           <SummaryRow label="Modelo" value={selectedTemplate ? `${selectedTemplate.icon} ${selectedTemplate.label}` : "—"} />
-          <SummaryRow label="Tema" value={selectedTheme ? `${selectedTheme.emoji} ${selectedTheme.label}` : "Sem tema"} />
+          <SummaryRow label="Tema" value={selectedTheme ? `${getRetroTheme(selectedTheme.key).icon} ${selectedTheme.label}` : "Sem tema"} />
           <SummaryRow label="Privacidade" value={privacyMode === "ANONYMOUS" ? "🕶️ Anônimo" : "🙂 Identificado"} />
           {createSession.isError && (
             <p className="text-sm text-rose-600">Não foi possível criar a sessão. Tente novamente.</p>
           )}
+          </div>
         </div>
       )}
     </Modal>

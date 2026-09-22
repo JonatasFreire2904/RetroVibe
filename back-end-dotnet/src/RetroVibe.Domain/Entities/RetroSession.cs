@@ -40,6 +40,8 @@ public sealed class RetroSession
     public string SquadId { get; private set; } = null!;
     public SessionStatus Status { get; private set; }
     public SessionPhase Phase { get; private set; }
+    public bool SequentialFlow { get; private set; }
+    public int ActiveColumnIndex { get; private set; }
     public PrivacyMode PrivacyMode { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? ClosedAt { get; private set; }
@@ -55,7 +57,7 @@ public sealed class RetroSession
 
     public static RetroSession Create(
         string id, string? title, string templateId, string themeId, string squadId,
-        PrivacyMode privacyMode, IEnumerable<RetroColumn> columns)
+        PrivacyMode privacyMode, IEnumerable<RetroColumn> columns, bool sequentialFlow = false)
     {
         var session = new RetroSession
         {
@@ -66,6 +68,8 @@ public sealed class RetroSession
             SquadId = squadId,
             Status = SessionStatus.Active,
             Phase = SessionPhase.Collecting,
+            SequentialFlow = sequentialFlow,
+            ActiveColumnIndex = 0,
             PrivacyMode = privacyMode,
             CreatedAt = DateTime.UtcNow,
             ClosedAt = null,
@@ -81,7 +85,8 @@ public sealed class RetroSession
         string id, string? title, string templateId, string themeId, string squadId,
         SessionStatus status, SessionPhase phase, PrivacyMode privacyMode,
         DateTime createdAt, DateTime? closedAt, int participantsCount,
-        double? feedbackScore, PhaseDurations? phaseDurations, IEnumerable<RetroColumn> columns)
+        double? feedbackScore, PhaseDurations? phaseDurations, IEnumerable<RetroColumn> columns,
+        bool sequentialFlow = false, int activeColumnIndex = 0)
     {
         var session = new RetroSession
         {
@@ -92,6 +97,8 @@ public sealed class RetroSession
             SquadId = squadId,
             Status = status,
             Phase = phase,
+            SequentialFlow = sequentialFlow,
+            ActiveColumnIndex = activeColumnIndex,
             PrivacyMode = privacyMode,
             CreatedAt = createdAt,
             ClosedAt = closedAt,
@@ -118,6 +125,10 @@ public sealed class RetroSession
         if (column is null)
         {
             return Result<RetroCard>.Fail(DomainFailure.NotFound($"Column {columnId} not found"));
+        }
+        if (SequentialFlow && column.Order > ActiveColumnIndex)
+        {
+            return Result<RetroCard>.Fail(DomainFailure.Conflict("Esta coluna ainda não está ativa"));
         }
 
         var created = RetroCard.Create(cardId, columnId, authorId, text);
@@ -191,6 +202,12 @@ public sealed class RetroSession
         if (Status != SessionStatus.Active)
         {
             return Result<SessionPhase>.Fail(DomainFailure.Conflict("A sessão não está ativa"));
+        }
+
+        if (SequentialFlow && Phase == SessionPhase.Collecting && ActiveColumnIndex < _columns.Count - 1)
+        {
+            ActiveColumnIndex++;
+            return Result<SessionPhase>.Ok(Phase);
         }
 
         var currentIndex = Array.IndexOf(PhaseOrder, Phase);

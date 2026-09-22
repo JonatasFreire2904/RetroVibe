@@ -68,6 +68,8 @@ export interface SessionBoard {
   title: string | null;
   status: SessionStatus;
   phase: SessionPhase;
+  sequentialFlow: boolean;
+  activeColumnIndex: number;
   privacyMode: PrivacyMode;
   template: Template;
   theme: Theme;

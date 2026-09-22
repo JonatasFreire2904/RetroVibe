@@ -108,6 +108,14 @@ app.UseExceptionHandler(handler => handler.Run(async context =>
     await context.Response.WriteAsJsonAsync(new { error = "INTERNAL_ERROR", message = "Erro interno do servidor" });
 }));
 
+// The root production image includes the compiled SPA alongside the API.
+var hasFrontend = Directory.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot"));
+if (hasFrontend)
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
+
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.UseCors();
@@ -121,13 +129,28 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
+if (hasFrontend)
+{
+    // Unknown API routes must remain JSON/HTTP errors rather than returning HTML.
+    app.MapFallback("/api/{**path}", () => Results.NotFound());
+    app.MapFallbackToFile("index.html");
+}
 
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<RetroVibeDbContext>();
     await db.Database.MigrateAsync();
     var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
-    await DbInitializer.SeedAsync(db, hasher);
+    var adminPassword = builder.Configuration["Seed:AdminPassword"] ?? "123";
+    var facilitatorPassword = builder.Configuration["Seed:FacilitatorPassword"] ?? "123";
+    if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("RAILWAY_ENVIRONMENT_ID")))
+    {
+        if (adminPassword.Length < 16 || facilitatorPassword.Length < 16 ||
+            jwtOptions.Key == "retrovibe-dev-signing-key-change-me-please-32bytes-min" ||
+            Encoding.UTF8.GetByteCount(jwtOptions.Key) < 32)
+            throw new InvalidOperationException("Railway requires Seed__AdminPassword and Seed__FacilitatorPassword (16+ characters) and a unique Jwt__Key (32+ bytes).");
+    }
+    await DbInitializer.SeedAsync(db, hasher, adminPassword: adminPassword, facilitatorPassword: facilitatorPassword);
 }
 
 app.Run();

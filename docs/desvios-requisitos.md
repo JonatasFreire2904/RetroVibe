@@ -57,8 +57,8 @@ que refletem o comportamento — idêntico — da reescrita); a partir de 2026-0
 | RF008 | Catálogo de temas visuais lúdicos | ✅ Implementado (5 temas seedados + Admin pode adicionar mais) |
 | RF009 | Selecionar tema + template ao criar sessão | ✅ Implementado |
 | RF010 | Identidade visual do tema consistente pra todos | ✅ Implementado (mesmo `theme.emoji`/label vem da API pra qualquer viewer) |
-| RF011 | Sequência de fases guiada pelo template | ✅ Implementado — `phase: COLLECTING → VOTING → DISCUSSING` na sessão |
-| RF012 | Facilitador avança fase pra todo mundo | ✅ Implementado — `PATCH /sessions/:id/phase`; card só pode ser criado em `COLLECTING`, voto só em `VOTING` |
+| RF011 | Sequência de fases guiada pelo template | ✅ Implementado — coleta sequencial pelas colunas quando habilitada, depois `COLLECTING → VOTING → DISCUSSING` |
+| RF012 | Facilitador avança fase pra todo mundo | ✅ Implementado — `PATCH /sessions/:id/phase` avança a coluna ativa para todos antes da votação; card só pode ser criado em `COLLECTING`, voto só em `VOTING` |
 | RF013 | Participante registra contribuição na fase de coleta | ✅ Implementado — reforçado pelo gate de fase do RF011/012 (antes, qualquer fase valia) |
 | RF014 | Contribuição organizada por fase | ⚠️ Parcial (mantido) — organizada por **coluna** do template (Start/Stop/Continue etc.), não por uma fase temporal separada; as duas dimensões coexistem (coluna = categoria, fase = quando pode agir) |
 | RF015 | Participante edita contribuição antes do fechamento | ✅ Implementado — `PATCH /sessions/:id/cards/:cardId`, restrito ao autor original, permitido em qualquer fase até a sessão fechar |
@@ -66,15 +66,15 @@ que refletem o comportamento — idêntico — da reescrita); a partir de 2026-0
 | RF017 | Ocultar autoria quando Anônimo | ✅ Implementado — `authorId` mascarado (`null`) na API para todo mundo; `isMine` preserva a capacidade do próprio autor de editar seu card |
 | RF018 | Relatório estruturado pós-encerramento | ⚠️ Parcial (mantido) — o board (read-only) + Itens de Ação cobrem todo o conteúdo do requisito, mas não como um documento único exportável (PDF/CSV) |
 | RF019 | Histórico pesquisável de sessões encerradas | ✅ Implementado (busca + filtros em Histórico de Sessões) |
-| RF020 | Admin gerencia catálogo preservando histórico imutável | ✅ Implementado — tela `/admin/catalogo`: Admin cria/ativa/inativa temas e templates; sessões já criadas mantêm suas colunas clonadas (histórico imutável por construção) |
+| RF020 | Admin gerencia catálogo preservando histórico imutável | ⚠️ Parcial — Admin cria/ativa/inativa temas e templates pela API; a tela `/admin/catalogo` foi removida. Sessões já criadas mantêm suas colunas clonadas (histórico imutável por construção) |
 
 ## Resumo para a banca
 
-Dos 20 RFs, **17 estão totalmente implementados** e **3 mantidos como parciais por decisão consciente**
+Dos 20 RFs, **16 estão totalmente implementados** e **4 mantidos como parciais por decisão consciente**
 (RF003 — login por usuário em vez de e-mail, sem impacto de negócio; RF014 — contribuição organizada por
 coluna do template em vez de uma fase temporal isolada, mantendo os dois conceitos coexistindo; RF018 —
-relatório coberto pelo board + Itens de Ação, sem exportação em arquivo único). Isso não mudou com a
-reescrita do back-end — são decisões de regra de negócio, independentes de stack.
+relatório coberto pelo board + Itens de Ação, sem exportação em arquivo único; RF020 — administração
+do catálogo disponível pela API, sem tela própria).
 
 Dos 15 RNFs, a reescrita para .NET 10/ASP.NET Core/EF Core elevou **RNF001, RNF002, RNF003, RNF007 e
 RNF014 de "equivalente funcional" para conformidade real** (hashing, JWT, autorização por papel,

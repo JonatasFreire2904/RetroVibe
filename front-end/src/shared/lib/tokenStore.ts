@@ -23,6 +23,7 @@ export function setToken(next: string | null): void {
     if (next) localStorage.setItem(STORAGE_KEY, next);
     else localStorage.removeItem(STORAGE_KEY);
   } catch {
+    // Mantém o token em memória quando o armazenamento local está indisponível.
   }
   listeners.forEach((listener) => listener());
 }

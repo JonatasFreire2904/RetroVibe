@@ -11,7 +11,7 @@ export function QuickTemplateCard({ template }: { template: Template }) {
 
   async function handleQuickStart() {
     const squadName = user?.squad ?? "Meu Squad";
-    const session = await createSession.mutateAsync({ templateId: template.id, squadName });
+    const session = await createSession.mutateAsync({ templateId: template.id, squadName, sequentialFlow: true });
     navigate(`/sessoes/${session.id}`);
   }
 

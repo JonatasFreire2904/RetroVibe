@@ -25,7 +25,8 @@ public static class SessionAssembler
 
     public static SessionBoardDto ToSessionBoardDto(
         RetroSession session, TemplateDto template, ThemeDto theme, Squad squad, int actionItemsCount, string viewerId) => new(
-        session.Id, session.Title, session.Status, session.Phase, session.PrivacyMode, template, theme,
+        session.Id, session.Title, session.Status, session.Phase, session.SequentialFlow, session.ActiveColumnIndex,
+        session.PrivacyMode, template, theme,
         new SquadRefDto(squad.Id, squad.Name), session.CreatedAt, session.ClosedAt, session.DurationMinutes,
         session.ParticipantsCount, actionItemsCount,
         session.Columns.OrderBy(c => c.Order).Select(c => ToSessionColumnDto(c, session, viewerId)).ToList());

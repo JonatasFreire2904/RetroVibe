@@ -2,7 +2,6 @@ import { useLocation } from "react-router-dom";
 import { BellIcon } from "@/shared/ui/Icons";
 
 const SECTIONS: { prefix: string; title: string; subtitle: string }[] = [
-  { prefix: "/admin/catalogo", title: "Catálogo", subtitle: "Gerencie modelos e temas da plataforma" },
   { prefix: "/historico", title: "Histórico de Sessões", subtitle: "Todas as retrospectivas realizadas pela equipe" },
   { prefix: "/sessoes", title: "Sessão de Retrospectiva", subtitle: "Colabore com o time em tempo real" },
   { prefix: "/itens-de-acao", title: "Itens de Ação", subtitle: "Acompanhe compromissos e responsáveis por sessão" },

@@ -7,7 +7,7 @@ namespace RetroVibe.Infrastructure.Persistence;
 
 public static class DbInitializer
 {
-    public static async Task SeedAsync(RetroVibeDbContext db, IPasswordHasher hasher, CancellationToken ct = default)
+    public static async Task SeedAsync(RetroVibeDbContext db, IPasswordHasher hasher, CancellationToken ct = default, string adminPassword = "123", string facilitatorPassword = "123")
     {
         if (await db.Users.AnyAsync(ct)) return;
 
@@ -97,9 +97,8 @@ public static class DbInitializer
         };
         db.Templates.AddRange(startStopContinue, starfish, fourLs, personalizado);
 
-        var passwordHash = hasher.Hash("123");
-        var marcos = User.Restore("user-marcos", "Marcos R.", "Administrador", "phoenix", "#7C3AED", "marcos", passwordHash, AccessLevel.Admin, null);
-        var joao = User.Restore("user-joao", "João", "Facilitador", "cosmos", "#22C55E", "joao", passwordHash, AccessLevel.Facilitator, null);
+        var marcos = User.Restore("user-marcos", "Marcos R.", "Administrador", "phoenix", "#7C3AED", "marcos", hasher.Hash(adminPassword), AccessLevel.Admin, null);
+        var joao = User.Restore("user-joao", "João", "Facilitador", "cosmos", "#22C55E", "joao", hasher.Hash(facilitatorPassword), AccessLevel.Facilitator, null);
         var ana = User.Restore("user-ana", "Ana", "Facilitadora", "phoenix", "#F97316", null, null, AccessLevel.Facilitator, null);
         var pedro = User.Restore("user-pedro", "Pedro", "Facilitador", "phoenix", "#0EA5E9", null, null, AccessLevel.Facilitator, null);
         var maria = User.Restore("user-maria", "Maria", "Facilitadora", "phoenix", "#EC4899", null, null, AccessLevel.Facilitator, null);

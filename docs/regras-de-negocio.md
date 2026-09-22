@@ -49,6 +49,9 @@ O sistema tem **3 papéis de acesso** (`accessLevel`), alinhados ao RF001 do doc
   ou `PAUSED`, mas não de uma sessão já `COMPLETED`.
 - **Fase guiada** (RF011/012): `COLLECTING → VOTING → DISCUSSING`, avançada uma de cada vez pelo
   facilitador/admin para todo o time simultaneamente — não é possível voltar fase nem pular uma.
+  Nas sessões criadas com `sequentialFlow: true`, a coleta percorre as colunas do modelo antes da
+  votação. `activeColumnIndex` indica a coluna atual para todos os participantes; colunas futuras
+  ficam bloqueadas, enquanto colunas já percorridas continuam aceitando cards.
   Enquanto a sessão está `ACTIVE`:
   - **Adicionar card** só é permitido em `COLLECTING`.
   - **Votar** só é permitido em `VOTING`.
@@ -95,9 +98,9 @@ O sistema tem **3 papéis de acesso** (`accessLevel`), alinhados ao RF001 do doc
 
 ## 6. Catálogo (Templates, Temas, Squads)
 
-- **Templates** e **Temas** têm dados semeados (seed) mas também podem ser **gerenciados por um
-  ADMIN** (RF002/RF020) na tela `/admin/catalogo`: criar novos, editar rótulo/ícone/emoji, e
-  **inativar** (`active: false`) — nunca excluídos de fato.
+- **Templates** e **Temas** têm dados semeados (seed) e podem ser gerenciados por um **ADMIN**
+  (RF002/RF020) pela API administrativa: criar novos, editar rótulo/ícone/emoji e **inativar**
+  (`active: false`) — nunca excluídos de fato. A tela de Catálogo foi removida da interface.
 - Um item inativo some das listas usadas para criar novas sessões, mas **sessões já criadas com ele
   continuam intactas**: as colunas do template são clonadas no momento da criação da sessão (ver
   seção 2), então inativar um template depois não afeta nem o histórico nem sessões em andamento —

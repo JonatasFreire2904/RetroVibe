@@ -82,19 +82,19 @@ restrito ao squad do usuário quando ele é FACILITATOR.
 |---|---|---|---|---|
 | `/sessions` | GET | ADMIN/FACILITATOR | query: `squadId?, templateId?, themeId?, search?` | `SessionSummary[]` |
 | `/sessions/:id` | GET | ADMIN/FACILITATOR/**PARTICIPANT** (só a sua) | — | `SessionBoard`; `403` se for de outro squad/sessão |
-| `/sessions` | POST | ADMIN/FACILITATOR | `{ title?, templateId, themeId?, squadName, privacyMode? }` | `SessionBoard` (201) — para um FACILITATOR, `squadName` é ignorado e o squad do próprio usuário é usado |
-| `/sessions/:id/cards` | POST | ADMIN/FACILITATOR/**PARTICIPANT** (só a sua) | `{ columnId, text }` | `SessionCard` (201) — só na fase `COLLECTING` de uma sessão `ACTIVE` |
+| `/sessions` | POST | ADMIN/FACILITATOR | `{ title?, templateId, themeId?, squadName, privacyMode?, sequentialFlow? }` | `SessionBoard` (201) — para um FACILITATOR, `squadName` é ignorado e o squad do próprio usuário é usado; `sequentialFlow` assume `false` quando omitido |
+| `/sessions/:id/cards` | POST | ADMIN/FACILITATOR/**PARTICIPANT** (só a sua) | `{ columnId, text }` | `SessionCard` (201) — só na fase `COLLECTING` de uma sessão `ACTIVE`; colunas futuras bloqueadas no fluxo sequencial |
 | `/sessions/:id/cards/:cardId` | PATCH | ADMIN/FACILITATOR/**PARTICIPANT** (autor original) | `{ text }` | `SessionBoard` — `403` se não for o autor; `409` se a sessão já estiver `COMPLETED` |
 | `/sessions/:id/votes` | POST | ADMIN/FACILITATOR/**PARTICIPANT** (só a sua) | `{ cardId }` | `{ voted: boolean, votes: number }` — só na fase `VOTING` |
 | `/sessions/:id/comments` | POST | ADMIN/FACILITATOR/**PARTICIPANT** (só a sua) | `{ cardId, text }` | `{ commentsCount: number }` |
 | `/sessions/:id/close` | PATCH | ADMIN/FACILITATOR | `{ feedbackScore? }` | `SessionBoard` — muda status para `COMPLETED` |
 | `/sessions/:id/pause` | PATCH | ADMIN/FACILITATOR | — | `SessionBoard` — status `PAUSED`, bloqueia contribuições |
 | `/sessions/:id/resume` | PATCH | ADMIN/FACILITATOR | — | `SessionBoard` — volta para `ACTIVE` |
-| `/sessions/:id/phase` | PATCH | ADMIN/FACILITATOR | — | `SessionBoard` — avança `COLLECTING → VOTING → DISCUSSING`; `409` se já estiver em `DISCUSSING` |
+| `/sessions/:id/phase` | PATCH | ADMIN/FACILITATOR | — | `SessionBoard` — se `sequentialFlow` estiver ativo, avança primeiro uma coluna por vez durante `COLLECTING`; depois segue `VOTING → DISCUSSING`; `409` se já estiver em `DISCUSSING` |
 
 `SessionSummary`: `{ id, title, status: "ACTIVE"\|"PAUSED"\|"COMPLETED", template, theme, squad, date, participantsCount, actionItemsCount, durationMinutes }`
 
-`SessionBoard`: igual ao summary + `phase: "COLLECTING"\|"VOTING"\|"DISCUSSING"`, `privacyMode: "ANONYMOUS"\|"IDENTIFIED"` +
+`SessionBoard`: igual ao summary + `phase: "COLLECTING"\|"VOTING"\|"DISCUSSING"`, `sequentialFlow: boolean`, `activeColumnIndex: number`, `privacyMode: "ANONYMOUS"\|"IDENTIFIED"` +
 `columns: [{ id, key, label, icon, cards: SessionCard[] }]`
 
 `SessionCard`: `{ id, text, authorId: string|null, isMine, votes, commentsCount, createdAt }` — `authorId` é

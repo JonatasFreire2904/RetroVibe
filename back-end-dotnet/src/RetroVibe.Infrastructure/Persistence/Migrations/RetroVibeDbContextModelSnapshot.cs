@@ -100,6 +100,12 @@ namespace RetroVibe.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RetroVibe.Domain.Entities.RetroSession", b =>
                 {
+                    b.Property<int>("ActiveColumnIndex")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0)
+                        .HasColumnName("active_column_index");
+
                     b.Property<string>("Id")
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
@@ -129,6 +135,12 @@ namespace RetroVibe.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT")
                         .HasColumnName("privacy_mode");
+
+                    b.Property<bool>("SequentialFlow")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("sequential_flow");
 
                     b.Property<string>("SquadId")
                         .IsRequired()

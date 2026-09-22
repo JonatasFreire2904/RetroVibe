@@ -42,6 +42,7 @@ function cacheBoard(sessionId: string, board: SessionBoard): void {
   try {
     localStorage.setItem(BOARD_CACHE_PREFIX + sessionId, JSON.stringify(board));
   } catch {
+    // A sessão continua utilizável quando o armazenamento local está indisponível.
   }
 }
 

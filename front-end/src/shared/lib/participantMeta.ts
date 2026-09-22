@@ -10,6 +10,7 @@ export function setParticipantMeta(meta: ParticipantMeta): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(meta));
   } catch {
+    // O navegador pode bloquear o armazenamento local.
   }
 }
 
@@ -26,5 +27,6 @@ export function clearParticipantMeta(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
+    // O navegador pode bloquear o armazenamento local.
   }
 }

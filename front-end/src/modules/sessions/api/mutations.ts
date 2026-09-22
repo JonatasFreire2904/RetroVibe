@@ -27,6 +27,7 @@ export interface CreateSessionInput {
   themeId?: string;
   squadName: string;
   privacyMode?: PrivacyMode;
+  sequentialFlow?: boolean;
 }
 
 export function useCreateSessionMutation() {

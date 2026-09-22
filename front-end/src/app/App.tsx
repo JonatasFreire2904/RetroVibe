@@ -1,6 +1,5 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ActionItemsPage } from "@/pages/ActionItemsPage";
-import { AdminCatalogPage } from "@/pages/AdminCatalogPage";
 import { HomePage } from "@/pages/HomePage";
 import { JoinSessionPage } from "@/pages/JoinSessionPage";
 import { LoginPage } from "@/pages/LoginPage";
@@ -11,7 +10,6 @@ import { SettingsPage } from "@/pages/SettingsPage";
 import { TeamDashboardPage } from "@/pages/TeamDashboardPage";
 import { AppLayout } from "./AppLayout";
 import { AppProviders } from "./providers";
-import { RequireAdmin } from "./RequireAdmin";
 import { RequireAuth } from "./RequireAuth";
 
 export function App() {
@@ -23,6 +21,14 @@ export function App() {
 
           <Route path="/entrar/:sessionId" element={<JoinSessionPage />} />
           <Route path="/participar/:sessionId" element={<ParticipantSessionPage />} />
+          <Route
+            path="/sessoes/:sessionId"
+            element={
+              <RequireAuth>
+                <SessionBoardPage />
+              </RequireAuth>
+            }
+          />
 
           <Route
             element={
@@ -33,19 +39,11 @@ export function App() {
           >
             <Route path="/" element={<HomePage />} />
             <Route path="/historico" element={<SessionHistoryPage />} />
-            <Route path="/sessoes/:sessionId" element={<SessionBoardPage />} />
             <Route path="/itens-de-acao" element={<ActionItemsPage />} />
             <Route path="/dashboard" element={<TeamDashboardPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
-            <Route
-              path="/admin/catalogo"
-              element={
-                <RequireAdmin>
-                  <AdminCatalogPage />
-                </RequireAdmin>
-              }
-            />
           </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AppProviders>

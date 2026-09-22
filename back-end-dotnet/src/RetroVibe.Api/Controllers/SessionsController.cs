@@ -9,7 +9,8 @@ using RetroVibe.Domain.Entities;
 namespace RetroVibe.Api.Controllers;
 
 public sealed record JoinSessionRequest(string DisplayName);
-public sealed record CreateSessionRequest(string? Title, string TemplateId, string? ThemeId, string SquadName, PrivacyMode? PrivacyMode);
+public sealed record CreateSessionRequest(string? Title, string TemplateId, string? ThemeId, string SquadName,
+    PrivacyMode? PrivacyMode, bool? SequentialFlow);
 public sealed record CloseSessionRequest(double? FeedbackScore);
 public sealed record AddCardRequest(string ColumnId, string Text);
 public sealed record EditCardRequest(string Text);
@@ -45,7 +46,8 @@ public sealed class SessionsController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> CreateSession([FromBody] CreateSessionRequest request, CancellationToken ct)
     {
         var result = await mediator.Send(
-            new CreateSessionCommand(request.Title, request.TemplateId, request.ThemeId, request.SquadName, request.PrivacyMode, User.GetUserId()), ct);
+            new CreateSessionCommand(request.Title, request.TemplateId, request.ThemeId, request.SquadName,
+                request.PrivacyMode, request.SequentialFlow, User.GetUserId()), ct);
         return result.ToActionResult(StatusCodes.Status201Created);
     }
 
