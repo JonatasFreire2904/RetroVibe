@@ -92,9 +92,12 @@
 .retro-stage-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .retro-stage-pill--current { color: white; border-color: rgba(255,255,255,.55); background: rgba(255,255,255,.22); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
 .retro-stage-pill--done { color: white; }
+.retro-stage-pill:not(:disabled):hover, .retro-stage-phase:not(:disabled):hover { background: rgba(255,255,255,.32); cursor: pointer; }
+.retro-stage-pill:disabled, .retro-stage-phase:disabled { cursor: default; }
 .retro-theme--dia-dos-namorados .retro-stage-pill { min-height: 34px; font-size: 12px; }
 .retro-stage-divider { color: rgba(255,255,255,.55); font-size: 16px; }
 .retro-stage-phase { padding: 6px 9px; border-radius: 999px; background: rgba(255,255,255,.25); font-size: 10px; font-weight: 800; }
+.retro-stage-phase.retro-stage-pill--current { border: 1px solid rgba(255,255,255,.65); background: rgba(255,255,255,.32); }
 
 .retro-session-controls { display: flex; align-items: center; justify-content: flex-end; flex: 0 0 auto; gap: 6px; }
 .retro-timer, .retro-header-action {
@@ -174,6 +177,14 @@
 
 .retro-status-banner { flex: none; padding: 7px 16px; background: #fff4dc; color: #8a5816; text-align: center; font-size: 12px; font-weight: 800; }
 .retro-board-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px; }
+.retro-action-panel { max-width: 880px; margin: 20px auto; padding: 20px; border-radius: 20px; background: rgba(255,255,255,.92); box-shadow: 0 8px 32px rgba(30,30,60,.1); }
+.retro-action-panel h2 { font-size: 17px; font-weight: 800; }
+.retro-action-panel p { margin-top: 4px; font-size: 12px; color: #64748b; }
+.retro-action-panel form { display: flex; gap: 8px; margin: 16px 0; }
+.retro-action-panel input { min-width: 0; flex: 1; border: 1px solid #d8d2ec; border-radius: 10px; padding: 10px 12px; background: #fff; color: #332b48; }
+.retro-action-panel form button { border-radius: 10px; padding: 10px 14px; background: #7049bd; color: #fff; font-size: 12px; font-weight: 800; }
+.retro-action-panel form button:disabled { opacity: .5; }
+.retro-action-list { display: grid; gap: 8px; }
 .retro-board-track {
   display: grid;
   grid-template-columns: repeat(var(--retro-column-count), minmax(0, 1fr));

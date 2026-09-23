@@ -3,7 +3,6 @@ import { useHomeDataQuery } from "@/modules/sessions/api/queries";
 import { CreateSessionModal } from "@/modules/sessions/components/CreateSessionModal";
 import { QuickTemplateCard } from "@/modules/sessions/components/QuickTemplateCard";
 import { RecentSessionCard } from "@/modules/sessions/components/RecentSessionCard";
-import { useCurrentUserQuery } from "@/modules/user/api/queries";
 import { Badge } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
 import { PlusIcon, RefreshIcon } from "@/shared/ui/Icons";
@@ -11,7 +10,6 @@ import { PlusIcon, RefreshIcon } from "@/shared/ui/Icons";
 export function HomePage() {
   const [modalOpen, setModalOpen] = useState(false);
   const { data, isLoading } = useHomeDataQuery();
-  const { data: user } = useCurrentUserQuery();
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -61,7 +59,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <CreateSessionModal open={modalOpen} onClose={() => setModalOpen(false)} defaultSquadName={user?.squad ?? ""} />
+      <CreateSessionModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
 }

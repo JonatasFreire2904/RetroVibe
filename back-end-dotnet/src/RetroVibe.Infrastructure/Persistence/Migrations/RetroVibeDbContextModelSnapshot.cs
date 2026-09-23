@@ -100,6 +100,12 @@ namespace RetroVibe.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RetroVibe.Domain.Entities.RetroSession", b =>
                 {
+                    b.Property<bool>("ActionCardsEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true)
+                        .HasColumnName("action_cards_enabled");
+
                     b.Property<int>("ActiveColumnIndex")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
@@ -117,6 +123,28 @@ namespace RetroVibe.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_at");
+
+                    b.Property<int>("CollectSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0)
+                        .HasColumnName("collect_seconds");
+
+                    b.Property<int>("VoteSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0)
+                        .HasColumnName("vote_seconds");
+
+                    b.Property<int>("DiscussSeconds")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0)
+                        .HasColumnName("discuss_seconds");
+
+                    b.Property<DateTime>("StageStartedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("stage_started_at");
 
                     b.Property<double?>("FeedbackScore")
                         .HasColumnType("REAL")

@@ -16,10 +16,10 @@ export function QuickTemplateCard({ template }: { template: Template }) {
   }
 
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+    <div className="group flex flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-100/70 motion-reduce:transform-none">
       <div className="flex items-start justify-between">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-50 text-cyan-500">▶</span>
-        <span className="text-xl">{template.icon}</span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-50 text-cyan-500 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6 motion-reduce:transform-none">▶</span>
+        <span className="text-xl transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-125 motion-reduce:transform-none">{template.icon}</span>
       </div>
       <h3 className="mt-3 text-base font-bold text-slate-900">{template.label}</h3>
       <p className="mt-1 text-sm text-slate-500">{template.description}</p>

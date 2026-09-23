@@ -1,4 +1,5 @@
 import { getToken, setToken } from "./tokenStore";
+import { getParticipantToken, setParticipantToken } from "./participantToken";
 import { pushToast } from "./toastStore";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3333/api";
@@ -16,7 +17,8 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getToken();
+  const participantRequest = window.location.pathname.startsWith("/participar/");
+  const token = participantRequest ? getParticipantToken() : getToken();
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, {
@@ -36,7 +38,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const body = await response.json().catch(() => ({}));
 
     if (response.status === 401 && !path.startsWith("/auth/")) {
-      setToken(null);
+      if (participantRequest) setParticipantToken(null);
+      else setToken(null);
       pushToast("Sua sessão expirou. Faça login novamente.", "info");
     } else if (response.status >= 500) {
       pushToast(body.message || "Erro inesperado no servidor. Tente novamente.");

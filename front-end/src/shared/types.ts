@@ -71,6 +71,7 @@ export interface SessionBoard {
   sequentialFlow: boolean;
   activeColumnIndex: number;
   privacyMode: PrivacyMode;
+  actionCardsEnabled: boolean;
   template: Template;
   theme: Theme;
   squad: { id: string; name: string };
@@ -105,6 +106,7 @@ export interface ActionItemSessionSummary {
   sessionId: string;
   templateLabel: string;
   templateIcon: string;
+  themeIcon: string;
   date: string;
   totalItems: number;
   completedItems: number;

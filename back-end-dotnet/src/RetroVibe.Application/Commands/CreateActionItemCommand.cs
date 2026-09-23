@@ -25,6 +25,12 @@ public sealed class CreateActionItemCommandHandler(
 
         var access = SquadAccessGuard.AssertSquadAccess(requester, session.SquadId);
         if (!access.IsOk) return Result<ActionItemDto>.FromFailure(access);
+        if (!session.ActionCardsEnabled)
+            return Result<ActionItemDto>.Fail(DomainFailure.Conflict("Cards de ação estão desativados nesta sessão"));
+
+        var assignee = request.AssigneeId is null ? null : await users.FindByIdAsync(request.AssigneeId, ct);
+        if (request.AssigneeId is not null && (assignee is null || assignee.SquadId != session.SquadId))
+            return Result<ActionItemDto>.Fail(DomainFailure.Validation("Responsável não pertence ao squad da sessão"));
 
         var created = ActionItem.Create(Guid.NewGuid().ToString(), session.Id, request.Description, request.AssigneeId, request.DueDate);
         if (!created.IsOk) return Result<ActionItemDto>.FromFailure(created);
@@ -32,7 +38,6 @@ public sealed class CreateActionItemCommandHandler(
         var item = created.Value!;
         await actionItems.SaveAsync(item, ct);
 
-        var assignee = item.AssigneeId is null ? null : await users.FindByIdAsync(item.AssigneeId, ct);
         return Result<ActionItemDto>.Ok(ActionItemAssembler.ToActionItemDto(item, assignee));
     }
 }

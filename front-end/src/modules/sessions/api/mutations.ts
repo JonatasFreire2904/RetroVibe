@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { httpClient } from "@/shared/lib/httpClient";
 import { setParticipantMeta } from "@/shared/lib/participantMeta";
-import { setToken } from "@/shared/lib/tokenStore";
-import type { PrivacyMode, SessionBoard, SessionCard } from "@/shared/types";
+import { setParticipantToken } from "@/shared/lib/participantToken";
+import type { PrivacyMode, SessionBoard, SessionCard, SessionPhase } from "@/shared/types";
 import { sessionKeys } from "./queries";
 
 interface JoinSessionResult {
@@ -15,7 +15,7 @@ export function useJoinSessionMutation(sessionId: string) {
     mutationFn: (displayName: string) =>
       httpClient.post<JoinSessionResult>(`/sessions/${sessionId}/join`, { displayName }),
     onSuccess: (result) => {
-      setToken(result.token);
+      setParticipantToken(result.token);
       setParticipantMeta(result.participant);
     },
   });
@@ -28,6 +28,7 @@ export interface CreateSessionInput {
   squadName: string;
   privacyMode?: PrivacyMode;
   sequentialFlow?: boolean;
+  actionCardsEnabled?: boolean;
 }
 
 export function useCreateSessionMutation() {
@@ -122,4 +123,12 @@ export function useResumeSessionMutation(sessionId: string) {
 
 export function useAdvancePhaseMutation(sessionId: string) {
   return useSessionMutation(sessionId, "/phase");
+}
+
+export function useNavigateStageMutation(sessionId: string) {
+  return useSessionMutation<{ phase: SessionPhase; activeColumnIndex: number }>(sessionId, "/stage");
+}
+
+export function useUpdateSessionSettingsMutation(sessionId: string) {
+  return useSessionMutation<{ title: string | null; privacyMode: PrivacyMode; sequentialFlow: boolean; actionCardsEnabled: boolean }>(sessionId, "/settings");
 }

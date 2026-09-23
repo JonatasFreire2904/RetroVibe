@@ -14,6 +14,8 @@ export function TeamDashboardPage() {
   const isAdmin = currentUser?.accessLevel === "ADMIN";
   const { data: squads = [] } = useSquadsQuery();
   const { data: dashboard, isLoading } = useTeamDashboardQuery(squadId || undefined);
+  const phaseTotal = dashboard ? dashboard.phaseAverages.collectMinutes + dashboard.phaseAverages.voteMinutes + dashboard.phaseAverages.discussMinutes : 0;
+  const phaseLabel = (minutes: number) => `${minutes} min · ${phaseTotal > 0 ? Math.round(minutes / phaseTotal * 100) : 0}%`;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -58,24 +60,24 @@ export function TeamDashboardPage() {
               </h2>
               <div className="space-y-4">
                 <BarRow
-                  label="Coleta"
+                  label="📝 Coleta"
                   value={dashboard.phaseAverages.collectMinutes}
                   max={dashboard.averageDurationMinutes}
-                  valueLabel={`${dashboard.phaseAverages.collectMinutes} min`}
+                  valueLabel={phaseLabel(dashboard.phaseAverages.collectMinutes)}
                   colorClassName="bg-cyan-400"
                 />
                 <BarRow
-                  label="Votação"
+                  label="🗳️ Votação"
                   value={dashboard.phaseAverages.voteMinutes}
                   max={dashboard.averageDurationMinutes}
-                  valueLabel={`${dashboard.phaseAverages.voteMinutes} min`}
+                  valueLabel={phaseLabel(dashboard.phaseAverages.voteMinutes)}
                   colorClassName="bg-violet-400"
                 />
                 <BarRow
-                  label="Discussão"
+                  label="💬 Discussão"
                   value={dashboard.phaseAverages.discussMinutes}
                   max={dashboard.averageDurationMinutes}
-                  valueLabel={`${dashboard.phaseAverages.discussMinutes} min`}
+                  valueLabel={phaseLabel(dashboard.phaseAverages.discussMinutes)}
                   colorClassName="bg-rose-400"
                 />
               </div>

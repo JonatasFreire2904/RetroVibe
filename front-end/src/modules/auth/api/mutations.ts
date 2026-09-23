@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { httpClient } from "@/shared/lib/httpClient";
 import { clearParticipantMeta } from "@/shared/lib/participantMeta";
+import { setParticipantToken } from "@/shared/lib/participantToken";
 import { setToken } from "@/shared/lib/tokenStore";
 import type { CurrentUser } from "@/shared/types";
 import { userKeys } from "@/modules/user/api/queries";
@@ -22,6 +23,7 @@ export function useLoginMutation() {
     onSuccess: (result) => {
       setToken(result.token);
       clearParticipantMeta();
+      setParticipantToken(null);
       queryClient.setQueryData(userKeys.me, result.user);
     },
   });
@@ -33,6 +35,7 @@ export function useLogout() {
     httpClient.post("/auth/logout").catch(() => undefined);
     setToken(null);
     clearParticipantMeta();
+    setParticipantToken(null);
     queryClient.clear();
   };
 }

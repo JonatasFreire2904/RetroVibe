@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useThemesQuery } from "@/modules/catalog/api/queries";
-import { useTemplatesQuery } from "@/modules/catalog/api/queries";
+import { useSquadsQuery, useThemesQuery, useTemplatesQuery } from "@/modules/catalog/api/queries";
 import { useCurrentUserQuery } from "@/modules/user/api/queries";
 import type { PrivacyMode } from "@/shared/types";
 import { Button } from "@/shared/ui/Button";
@@ -9,24 +8,28 @@ import { Modal } from "@/shared/ui/Modal";
 import { SearchIcon } from "@/shared/ui/Icons";
 import { useCreateSessionMutation } from "../api/mutations";
 import { getRetroTheme } from "../retroTheme";
+import { SessionSettingsFields } from "./SessionSettingsFields";
 
 interface CreateSessionModalProps {
   open: boolean;
   onClose: () => void;
-  defaultSquadName?: string;
 }
 
-export function CreateSessionModal({ open, onClose, defaultSquadName }: CreateSessionModalProps) {
+export function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const [title, setTitle] = useState("");
-  const [squadName, setSquadName] = useState(defaultSquadName ?? "");
+  const [squadName, setSquadName] = useState("");
+  const [squadListOpen, setSquadListOpen] = useState(false);
+  const [squadSelected, setSquadSelected] = useState(false);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [themeId, setThemeId] = useState<string | null>(null);
   const [privacyMode, setPrivacyMode] = useState<PrivacyMode>("IDENTIFIED");
   const [sequentialFlow, setSequentialFlow] = useState(true);
+  const [actionCardsEnabled, setActionCardsEnabled] = useState(true);
 
   const { data: templates = [] } = useTemplatesQuery();
   const { data: themes = [] } = useThemesQuery();
+  const { data: squads = [] } = useSquadsQuery();
   const { data: currentUser } = useCurrentUserQuery();
   const isAdmin = currentUser?.accessLevel === "ADMIN";
   const createSession = useCreateSessionMutation();
@@ -41,11 +44,14 @@ export function CreateSessionModal({ open, onClose, defaultSquadName }: CreateSe
   function reset() {
     setStep(1);
     setTitle("");
-    setSquadName(isAdmin ? defaultSquadName ?? "" : currentUser?.squad ?? "");
+    setSquadName(isAdmin ? "" : currentUser?.squad ?? "");
+    setSquadListOpen(false);
+    setSquadSelected(false);
     setTemplateId(null);
     setThemeId(null);
     setPrivacyMode("IDENTIFIED");
     setSequentialFlow(true);
+    setActionCardsEnabled(true);
     createSession.reset();
   }
 
@@ -63,15 +69,23 @@ export function CreateSessionModal({ open, onClose, defaultSquadName }: CreateSe
       squadName: squadName.trim(),
       privacyMode,
       sequentialFlow,
+      actionCardsEnabled,
     });
     reset();
     onClose();
     navigate(`/sessoes/${session.id}`);
   }
 
-  const selectedTemplate = templates.find((t) => t.id === templateId);
-  const selectedTheme = themes.find((t) => t.id === themeId);
-  const canAdvance = squadName.trim().length > 0 && Boolean(templateId);
+  const matchingSquads = squads.filter(squad =>
+    squadSelected || squad.name.toLocaleLowerCase("pt-BR").includes(squadName.trim().toLocaleLowerCase("pt-BR")));
+  const existingSquad = squads.some(squad => squad.name.toLocaleLowerCase("pt-BR") === squadName.trim().toLocaleLowerCase("pt-BR"));
+  const canAdvance = squadName.trim().length > 0 && Boolean(templateId) && (!isAdmin || squadSelected || existingSquad);
+
+  function selectSquad(name: string) {
+    setSquadName(name);
+    setSquadSelected(true);
+    setSquadListOpen(false);
+  }
 
   return (
     <Modal
@@ -127,11 +141,36 @@ export function CreateSessionModal({ open, onClose, defaultSquadName }: CreateSe
               <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 value={squadName}
-                onChange={(e) => setSquadName(e.target.value)}
-                placeholder="Nome do squad..."
+                onChange={(e) => { setSquadName(e.target.value); setSquadSelected(false); setSquadListOpen(true); }}
+                onFocus={() => isAdmin && setSquadListOpen(true)}
+                onKeyDown={(e) => { if (e.key === "Escape") setSquadListOpen(false); }}
+                placeholder={isAdmin ? "Selecione ou busque um squad..." : "Nome do squad..."}
+                role={isAdmin ? "combobox" : undefined}
+                aria-expanded={isAdmin ? squadListOpen : undefined}
+                aria-controls={isAdmin ? "squad-options" : undefined}
+                aria-autocomplete={isAdmin ? "list" : undefined}
                 disabled={!isAdmin}
-                className="w-full rounded-xl border border-slate-200 bg-violet-50/40 py-3 pl-10 pr-4 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-violet-400 disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full rounded-xl border border-slate-200 bg-violet-50/40 py-3 pl-10 pr-10 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-violet-400 disabled:cursor-not-allowed disabled:opacity-70"
               />
+              {isAdmin && <button type="button" aria-label="Mostrar squads" aria-expanded={squadListOpen}
+                onClick={() => setSquadListOpen(value => !value)}
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:bg-violet-100">
+                <span className={`text-lg transition-transform ${squadListOpen ? "rotate-180" : ""}`}>⌄</span>
+              </button>}
+              {isAdmin && squadListOpen && <div id="squad-options" role="listbox" aria-label="Squads disponíveis"
+                className="absolute left-0 right-0 top-full z-20 mt-2 max-h-44 overflow-y-auto rounded-xl border border-violet-200 bg-white p-1.5 shadow-lg">
+              {matchingSquads.map(squad => <button key={squad.id} type="button" role="option"
+                aria-selected={squad.name === squadName} onClick={() => selectSquad(squad.name)}
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-violet-50 focus:bg-violet-50 focus:outline-none">
+                {squad.name}
+              </button>)}
+              {matchingSquads.length === 0 && <p className="px-3 py-2 text-sm text-slate-500">Nenhum squad encontrado.</p>}
+              {squadName.trim() && !existingSquad && <button type="button" role="option" aria-selected={false}
+                onClick={() => selectSquad(squadName.trim())}
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-violet-700 hover:bg-violet-50 focus:bg-violet-50 focus:outline-none">
+                Criar novo squad “{squadName.trim()}”
+              </button>}
+              </div>}
             </div>
             {!isAdmin && <p className="mt-1.5 text-xs text-slate-400">Sessões são sempre criadas no seu squad.</p>}
           </div>
@@ -176,74 +215,15 @@ export function CreateSessionModal({ open, onClose, defaultSquadName }: CreateSe
             </div>
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-800">Privacidade</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setPrivacyMode("IDENTIFIED")}
-                className={`rounded-xl border px-4 py-3 text-left text-sm font-medium transition ${
-                  privacyMode === "IDENTIFIED"
-                    ? "border-violet-400 bg-violet-50 text-violet-700"
-                    : "border-slate-200 bg-violet-50/30 text-slate-600 hover:border-violet-200"
-                }`}
-              >
-                🙂 Identificado
-                <p className="mt-0.5 text-xs font-normal text-slate-400">Todos veem quem escreveu cada card</p>
-              </button>
-              <button
-                onClick={() => setPrivacyMode("ANONYMOUS")}
-                className={`rounded-xl border px-4 py-3 text-left text-sm font-medium transition ${
-                  privacyMode === "ANONYMOUS"
-                    ? "border-violet-400 bg-violet-50 text-violet-700"
-                    : "border-slate-200 bg-violet-50/30 text-slate-600 hover:border-violet-200"
-                }`}
-              >
-                🕶️ Anônimo
-                <p className="mt-0.5 text-xs font-normal text-slate-400">Autoria escondida de todo mundo</p>
-              </button>
-            </div>
-          </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={sequentialFlow}
-            onClick={() => setSequentialFlow((value) => !value)}
-            className="flex w-full items-center justify-between gap-4 rounded-2xl border border-violet-100 bg-violet-50/60 p-4 text-left"
-          >
-            <span>
-              <span className="block text-sm font-bold text-slate-800">Fluxo sequencial de etapas</span>
-              <span className="mt-1 block text-xs leading-relaxed text-slate-500">
-                Os participantes concluem cada coluna antes de passar para a próxima. Desative para preencher todas ao mesmo tempo.
-              </span>
-            </span>
-            <span className={`relative h-6 w-11 shrink-0 rounded-full transition ${sequentialFlow ? "bg-violet-500" : "bg-slate-300"}`}>
-              <span className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${sequentialFlow ? "left-6" : "left-1"}`} />
-            </span>
-          </button>
-          <div className="space-y-3 rounded-xl border border-slate-100 bg-violet-50/30 p-5">
-          {title.trim() && <SummaryRow label="Título" value={title.trim()} />}
-          <SummaryRow label="Squad" value={squadName} />
-          <SummaryRow label="Modelo" value={selectedTemplate ? `${selectedTemplate.icon} ${selectedTemplate.label}` : "—"} />
-          <SummaryRow label="Tema" value={selectedTheme ? `${getRetroTheme(selectedTheme.key).icon} ${selectedTheme.label}` : "Sem tema"} />
-          <SummaryRow label="Privacidade" value={privacyMode === "ANONYMOUS" ? "🕶️ Anônimo" : "🙂 Identificado"} />
-          {createSession.isError && (
-            <p className="text-sm text-rose-600">Não foi possível criar a sessão. Tente novamente.</p>
-          )}
-          </div>
+        <div>
+          <SessionSettingsFields privacyMode={privacyMode} onPrivacyModeChange={setPrivacyMode}
+            sequentialFlow={sequentialFlow} onSequentialFlowChange={setSequentialFlow}
+            actionCardsEnabled={actionCardsEnabled} onActionCardsEnabledChange={setActionCardsEnabled} />
+          {createSession.isError && <p className="mt-3 text-sm text-rose-600">Não foi possível criar a sessão. Tente novamente.</p>}
         </div>
       )}
     </Modal>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-slate-500">{label}</span>
-      <span className="font-semibold text-slate-800">{value}</span>
-    </div>
   );
 }

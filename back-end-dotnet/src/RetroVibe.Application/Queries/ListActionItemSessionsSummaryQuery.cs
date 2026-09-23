@@ -21,14 +21,15 @@ public sealed class ListActionItemSessionsSummaryQueryHandler(
         foreach (var session in allSessions)
         {
             var items = await actionItems.FindAllAsync(new ActionItemListFilters(SessionId: session.Id), ct);
-            if (items.Count == 0) continue;
+            if (items.Count == 0 && !session.ActionCardsEnabled) continue;
 
             var template = await catalog.FindTemplateByIdAsync(session.TemplateId, ct);
             if (template is null) continue;
+            var theme = await catalog.FindThemeByIdAsync(session.ThemeId, ct);
 
             var completed = items.Count(i => i.Status == ActionItemStatus.Done);
             summaries.Add(new ActionItemSessionSummaryDto(
-                session.Id, template.Label, template.Icon, session.ClosedAt ?? session.CreatedAt, items.Count, completed));
+                session.Id, template.Label, template.Icon, theme?.Emoji ?? "🗂️", session.ClosedAt ?? session.CreatedAt, items.Count, completed));
         }
 
         return summaries.OrderByDescending(s => s.Date).ToList();

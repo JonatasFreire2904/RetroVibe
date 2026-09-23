@@ -120,7 +120,7 @@ export const ThumbsUpIcon = (props: IconProps) =>
   );
 
 export const MessageIcon = (props: IconProps) =>
-  base(<path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5A8.5 8.5 0 1 1 21 11.5Z" />, props);
+  base(<path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-3.7-.8L3 21l1.8-5.8A8.5 8.5 0 1 1 21 11.5Z" />, props);
 
 export const CalendarIcon = (props: IconProps) =>
   base(

@@ -24,7 +24,7 @@ const BORDER_BY_STATUS: Record<ActionItemStatus, string> = {
   DISCARDED: "border-l-rose-400",
 };
 
-export function ActionItemRow({ item }: { item: ActionItem }) {
+export function ActionItemRow({ item, assignees = [] }: { item: ActionItem; assignees?: { id: string; name: string; avatarColor: string }[] }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.description);
   const [showComments, setShowComments] = useState(false);
@@ -89,6 +89,15 @@ export function ActionItemRow({ item }: { item: ActionItem }) {
 
         <div className="ml-auto flex items-center gap-4">
           {item.assignee && <Avatar name={item.assignee.name} color={item.assignee.avatarColor} size="sm" />}
+          <select aria-label={`Responsável por ${item.description}`} title="Editar responsável"
+            value={item.assignee?.id ?? ""} onChange={event => updateItem.mutate({ id: item.id, assigneeId: event.target.value || null })}
+            disabled={updateItem.isPending}
+            className="max-w-[145px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 outline-none focus:border-violet-400">
+            <option value="">Sem responsável</option>
+            {assignees.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+            {item.assignee && !assignees.some(user => user.id === item.assignee?.id) &&
+              <option value={item.assignee.id}>{item.assignee.name}</option>}
+          </select>
           {item.dueDate && (
             <span className="flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 font-mono text-xs text-slate-500">
               <CalendarIcon width={12} height={12} />
@@ -97,6 +106,7 @@ export function ActionItemRow({ item }: { item: ActionItem }) {
           )}
           <button
             onClick={() => setShowComments((v) => !v)}
+            aria-label={`Comentários: ${item.commentsCount}`}
             className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs transition hover:bg-violet-100 hover:text-violet-600 ${
               showComments ? "bg-violet-100 text-violet-600" : "text-slate-400"
             }`}

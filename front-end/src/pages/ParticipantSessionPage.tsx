@@ -3,6 +3,7 @@ import { useAddCardMutation, useEditCardMutation, useToggleVoteMutation } from "
 import { useSessionBoardQuery } from "@/modules/sessions/api/queries";
 import { RetroBoardView } from "@/modules/sessions/components/RetroBoardView";
 import { getParticipantMeta } from "@/shared/lib/participantMeta";
+import { getParticipantToken } from "@/shared/lib/participantToken";
 
 export function ParticipantSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -12,7 +13,7 @@ export function ParticipantSessionPage() {
   const editCard = useEditCardMutation(sessionId ?? "");
   const toggleVote = useToggleVoteMutation(sessionId ?? "");
 
-  if (!meta || meta.sessionId !== sessionId) {
+  if (!meta || meta.sessionId !== sessionId || !getParticipantToken()) {
     return <Navigate to={`/entrar/${sessionId ?? ""}`} replace />;
   }
 

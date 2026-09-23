@@ -9,4 +9,4 @@ public sealed record ActionItemDto(
     ActionItemAssigneeDto? Assignee, DateTime? DueDate, int CommentsCount, DateTime CreatedAt);
 
 public sealed record ActionItemSessionSummaryDto(
-    string SessionId, string TemplateLabel, string TemplateIcon, DateTime Date, int TotalItems, int CompletedItems);
+    string SessionId, string TemplateLabel, string TemplateIcon, string ThemeIcon, DateTime Date, int TotalItems, int CompletedItems);

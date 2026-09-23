@@ -48,6 +48,12 @@ public sealed class UpdateActionItemCommandHandler(
         if (request.AssigneeId.IsSpecified || request.DueDate.IsSpecified)
         {
             var assigneeId = request.AssigneeId.IsSpecified ? request.AssigneeId.Value : item.AssigneeId;
+            if (assigneeId is not null)
+            {
+                var selectedAssignee = await users.FindByIdAsync(assigneeId, ct);
+                if (selectedAssignee is null || selectedAssignee.SquadId != session.SquadId)
+                    return Result<ActionItemDto>.Fail(DomainFailure.Validation("Responsável não pertence ao squad da sessão"));
+            }
             var dueDate = request.DueDate.IsSpecified ? request.DueDate.Value : item.DueDate;
             item.Reassign(assigneeId, dueDate);
         }

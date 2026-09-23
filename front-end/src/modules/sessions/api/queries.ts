@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { httpClient } from "@/shared/lib/httpClient";
+import { getParticipantToken } from "@/shared/lib/participantToken";
 import type { Comment, HomeData, SessionBoard, SessionSummary } from "@/shared/types";
 
 export const sessionKeys = {
@@ -36,37 +37,13 @@ export function useSessionsQuery(filters: SessionListFilters) {
   });
 }
 
-const BOARD_CACHE_PREFIX = "retrovibe_board_cache_";
-
-function cacheBoard(sessionId: string, board: SessionBoard): void {
-  try {
-    localStorage.setItem(BOARD_CACHE_PREFIX + sessionId, JSON.stringify(board));
-  } catch {
-    // A sessão continua utilizável quando o armazenamento local está indisponível.
-  }
-}
-
-function readCachedBoard(sessionId: string): SessionBoard | undefined {
-  try {
-    const raw = localStorage.getItem(BOARD_CACHE_PREFIX + sessionId);
-    return raw ? (JSON.parse(raw) as SessionBoard) : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export function useSessionBoardQuery(sessionId: string | undefined, options?: { refetchInterval?: number }) {
+  const viewerKey = window.location.pathname.startsWith("/participar/") ? getParticipantToken() : "staff";
   return useQuery({
-    queryKey: sessionKeys.board(sessionId ?? ""),
-    queryFn: async () => {
-      const board = await httpClient.get<SessionBoard>(`/sessions/${sessionId}`);
-      if (sessionId) cacheBoard(sessionId, board);
-      return board;
-    },
+    queryKey: [...sessionKeys.board(sessionId ?? ""), viewerKey],
+    queryFn: () => httpClient.get<SessionBoard>(`/sessions/${sessionId}`),
     enabled: Boolean(sessionId),
     refetchInterval: options?.refetchInterval,
-    initialData: sessionId ? readCachedBoard(sessionId) : undefined,
-    initialDataUpdatedAt: 0,
   });
 }
 
@@ -75,5 +52,13 @@ export function useCardCommentsQuery(sessionId: string, cardId: string, enabled:
     queryKey: sessionKeys.cardComments(sessionId, cardId),
     queryFn: () => httpClient.get<Comment[]>(`/sessions/${sessionId}/cards/${cardId}/comments`),
     enabled,
+  });
+}
+
+export function useSessionAssigneesQuery(sessionId: string | undefined) {
+  return useQuery({
+    queryKey: ["sessions", "assignees", sessionId],
+    queryFn: () => httpClient.get<{ id: string; name: string; avatarColor: string }[]>(`/sessions/${sessionId}/assignees`),
+    enabled: Boolean(sessionId),
   });
 }

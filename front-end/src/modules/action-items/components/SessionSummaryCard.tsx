@@ -18,7 +18,7 @@ export function SessionSummaryCard({ summary, active, onSelect }: SessionSummary
     >
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <span>{summary.templateIcon}</span>
+          <span>{summary.themeIcon}</span>
           {summary.templateLabel}
         </span>
         <span className="font-mono text-xs text-violet-500">{summary.totalItems}</span>

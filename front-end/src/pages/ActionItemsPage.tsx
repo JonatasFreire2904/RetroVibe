@@ -4,7 +4,7 @@ import { useCreateActionItemMutation } from "@/modules/action-items/api/mutation
 import { useActionItemSessionsSummaryQuery, useActionItemsQuery } from "@/modules/action-items/api/queries";
 import { ActionItemRow } from "@/modules/action-items/components/ActionItemRow";
 import { SessionSummaryCard } from "@/modules/action-items/components/SessionSummaryCard";
-import { useSessionBoardQuery } from "@/modules/sessions/api/queries";
+import { useSessionAssigneesQuery, useSessionBoardQuery } from "@/modules/sessions/api/queries";
 import { useCurrentUserQuery } from "@/modules/user/api/queries";
 import type { ActionItemStatus } from "@/shared/types";
 import { Button } from "@/shared/ui/Button";
@@ -53,6 +53,7 @@ export function ActionItemsPage() {
   }, [sessionSummaries, selectedSessionId]);
 
   const { data: board } = useSessionBoardQuery(selectedSessionId ?? undefined);
+  const { data: assignees = [] } = useSessionAssigneesQuery(selectedSessionId ?? undefined);
   const { data: items = [] } = useActionItemsQuery({ sessionId: selectedSessionId ?? undefined });
   const createItem = useCreateActionItemMutation();
 
@@ -112,7 +113,7 @@ export function ActionItemsPage() {
                 <p className="text-xs text-slate-400">Squad {board.squad.name}</p>
               </div>
             </div>
-            <Button size="sm" icon={<PlusIcon width={14} height={14} />} onClick={() => document.getElementById("new-item-input")?.focus()}>
+            <Button size="sm" disabled={!board.actionCardsEnabled} icon={<PlusIcon width={14} height={14} />} onClick={() => document.getElementById("new-item-input")?.focus()}>
               Novo item
             </Button>
           </div>
@@ -134,7 +135,7 @@ export function ActionItemsPage() {
           ))}
         </div>
 
-        {selectedSessionId && (
+        {selectedSessionId && board?.actionCardsEnabled && (
           <div className="mb-4 flex items-center gap-2 rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
             <input
               id="new-item-input"
@@ -152,7 +153,7 @@ export function ActionItemsPage() {
 
         <div className="space-y-3">
           {visibleItems.map((item) => (
-            <ActionItemRow key={item.id} item={item} />
+            <ActionItemRow key={item.id} item={item} assignees={assignees} />
           ))}
           {selectedSessionId && visibleItems.length === 0 && (
             <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400">

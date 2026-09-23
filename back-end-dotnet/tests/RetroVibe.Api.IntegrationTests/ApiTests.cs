@@ -110,6 +110,65 @@ public sealed class ApiTests : IDisposable
     }
 
     [Fact]
+    public async Task UpdatesSettingsAndNavigatesBackToEarlierStages()
+    {
+        var token = await LoginAsync("marcos");
+        var board = await CreateSessionAsync(token);
+        var settings = await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{board.Id}/settings", token,
+            new { title = "Sprint 42", privacyMode = "ANONYMOUS", sequentialFlow = true, actionCardsEnabled = false }));
+        settings.EnsureSuccessStatusCode();
+        var updated = (await settings.Content.ReadFromJsonAsync<SessionBoardDto>(JsonHelper.Options))!;
+        Assert.Equal("Sprint 42", updated.Title);
+        Assert.False(updated.ActionCardsEnabled);
+        Assert.True(updated.SequentialFlow);
+
+        await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{board.Id}/phase", token));
+        var back = await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{board.Id}/stage", token,
+            new { phase = "COLLECTING", activeColumnIndex = 0 }));
+        back.EnsureSuccessStatusCode();
+        var returned = (await back.Content.ReadFromJsonAsync<SessionBoardDto>(JsonHelper.Options))!;
+        Assert.Equal(0, returned.ActiveColumnIndex);
+        Assert.Equal(RetroVibe.Domain.Entities.SessionPhase.Collecting, returned.Phase);
+
+        var add = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{board.Id}/cards", token,
+            new { columnId = board.Columns[0].Id, text = "Voltei para coleta" }));
+        Assert.Equal(HttpStatusCode.Created, add.StatusCode);
+    }
+
+    [Fact]
+    public async Task ActionCardsRespectSessionSettingAndAllowChangingAssignee()
+    {
+        var token = await LoginAsync("marcos");
+        var board = await CreateSessionAsync(token);
+        await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{board.Id}/settings", token,
+            new { title = "Ações", privacyMode = "IDENTIFIED", sequentialFlow = false, actionCardsEnabled = false }));
+
+        var blocked = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/action-items", token,
+            new { sessionId = board.Id, description = "Ação bloqueada" }));
+        Assert.Equal(HttpStatusCode.Conflict, blocked.StatusCode);
+
+        await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{board.Id}/settings", token,
+            new { title = "Ações", privacyMode = "IDENTIFIED", sequentialFlow = false, actionCardsEnabled = true }));
+        var assigneesResponse = await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/sessions/{board.Id}/assignees", token));
+        assigneesResponse.EnsureSuccessStatusCode();
+
+        var createdResponse = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/action-items", token,
+            new { sessionId = board.Id, description = "Ação real" }));
+        createdResponse.EnsureSuccessStatusCode();
+        var created = (await createdResponse.Content.ReadFromJsonAsync<ActionItemDto>(JsonHelper.Options))!;
+        var assignedResponse = await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/action-items/{created.Id}", token,
+            new { assigneeId = "user-marcos" }));
+        assignedResponse.EnsureSuccessStatusCode();
+        var assigned = (await assignedResponse.Content.ReadFromJsonAsync<ActionItemDto>(JsonHelper.Options))!;
+        Assert.Equal("user-marcos", assigned.Assignee?.Id);
+
+        var summaryResponse = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/action-items/sessions-summary", token));
+        summaryResponse.EnsureSuccessStatusCode();
+        var summaries = (await summaryResponse.Content.ReadFromJsonAsync<List<ActionItemSessionSummaryDto>>(JsonHelper.Options))!;
+        Assert.Contains(summaries, summary => summary.SessionId == board.Id && summary.TotalItems == 1 && summary.ThemeIcon == board.Theme.Emoji);
+    }
+
+    [Fact]
     public async Task ForcesFacilitatorToCreateSessionsOnlyInOwnSquad()
     {
         var token = await LoginAsync("joao");

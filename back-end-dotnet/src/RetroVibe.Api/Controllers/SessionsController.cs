@@ -5,12 +5,15 @@ using RetroVibe.Api.Auth;
 using RetroVibe.Application.Commands;
 using RetroVibe.Application.Queries;
 using RetroVibe.Domain.Entities;
+using RetroVibe.Domain.Repositories;
 
 namespace RetroVibe.Api.Controllers;
 
 public sealed record JoinSessionRequest(string DisplayName);
 public sealed record CreateSessionRequest(string? Title, string TemplateId, string? ThemeId, string SquadName,
-    PrivacyMode? PrivacyMode, bool? SequentialFlow);
+    PrivacyMode? PrivacyMode, bool? SequentialFlow, bool? ActionCardsEnabled);
+public sealed record UpdateSessionRequest(string? Title, PrivacyMode PrivacyMode, bool SequentialFlow, bool ActionCardsEnabled);
+public sealed record NavigateStageRequest(SessionPhase Phase, int ActiveColumnIndex);
 public sealed record CloseSessionRequest(double? FeedbackScore);
 public sealed record AddCardRequest(string ColumnId, string Text);
 public sealed record EditCardRequest(string Text);
@@ -20,7 +23,7 @@ public sealed record AddCommentRequest(string CardId, string Text);
 [ApiController]
 [Route("api/sessions")]
 [Authorize]
-public sealed class SessionsController(IMediator mediator) : ControllerBase
+public sealed class SessionsController(IMediator mediator, ISessionRepository sessions, IUserRepository users) : ControllerBase
 {
     [HttpPost("{id}/join")]
     [AllowAnonymous]
@@ -47,7 +50,7 @@ public sealed class SessionsController(IMediator mediator) : ControllerBase
     {
         var result = await mediator.Send(
             new CreateSessionCommand(request.Title, request.TemplateId, request.ThemeId, request.SquadName,
-                request.PrivacyMode, request.SequentialFlow, User.GetUserId()), ct);
+                request.PrivacyMode, request.SequentialFlow, request.ActionCardsEnabled, User.GetUserId()), ct);
         return result.ToActionResult(StatusCodes.Status201Created);
     }
 
@@ -83,6 +86,23 @@ public sealed class SessionsController(IMediator mediator) : ControllerBase
         return result.ToActionResult();
     }
 
+    [HttpPatch("{id}/stage")]
+    [Authorize(Policy = "Staff")]
+    public async Task<IActionResult> NavigateStage(string id, [FromBody] NavigateStageRequest request, CancellationToken ct)
+    {
+        var result = await mediator.Send(new NavigateStageCommand(id, request.Phase, request.ActiveColumnIndex, User.GetUserId()), ct);
+        return result.ToActionResult();
+    }
+
+    [HttpPatch("{id}/settings")]
+    [Authorize(Policy = "Staff")]
+    public async Task<IActionResult> UpdateSettings(string id, [FromBody] UpdateSessionRequest request, CancellationToken ct)
+    {
+        var result = await mediator.Send(new UpdateSessionSettingsCommand(id, request.Title, request.PrivacyMode,
+            request.SequentialFlow, request.ActionCardsEnabled, User.GetUserId()), ct);
+        return result.ToActionResult();
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetBoard(string id, CancellationToken ct)
     {
@@ -96,6 +116,17 @@ public sealed class SessionsController(IMediator mediator) : ControllerBase
         }
 
         return Ok(board);
+    }
+
+    [HttpGet("{id}/assignees")]
+    [Authorize(Policy = "Staff")]
+    public async Task<IActionResult> ListAssignees(string id, CancellationToken ct)
+    {
+        var session = await sessions.FindByIdAsync(id, ct);
+        if (session is null) return NotFound();
+        if (!IsAllowedOnSession(session.SquadId, id)) return Forbid();
+        var members = await users.ListBySquadAsync(session.SquadId, ct);
+        return Ok(members.Select(member => new { member.Id, member.Name, member.AvatarColor }));
     }
 
     [HttpPost("{id}/cards")]
