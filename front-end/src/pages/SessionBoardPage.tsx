@@ -3,6 +3,7 @@ import {
   useAddCardMutation, useAdvancePhaseMutation, useCloseSessionMutation, useEditCardMutation,
   usePauseSessionMutation, useResumeSessionMutation, useToggleVoteMutation,
   useNavigateStageMutation, useUpdateSessionSettingsMutation,
+  useRevealSessionCardsMutation,
 } from "@/modules/sessions/api/mutations";
 import { useSessionBoardQuery } from "@/modules/sessions/api/queries";
 import { RetroBoardView } from "@/modules/sessions/components/RetroBoardView";
@@ -21,6 +22,7 @@ export function SessionBoardPage() {
   const advancePhase = useAdvancePhaseMutation(sessionId ?? "");
   const navigateStage = useNavigateStageMutation(sessionId ?? "");
   const updateSettings = useUpdateSessionSettingsMutation(sessionId ?? "");
+  const revealCards = useRevealSessionCardsMutation(sessionId ?? "");
 
   if (isError) {
     const message = error instanceof ApiError && error.status === 403
@@ -52,12 +54,14 @@ export function SessionBoardPage() {
       isResuming={resumeSession.isPending}
       isClosing={closeSession.isPending}
       isUpdatingSettings={updateSettings.isPending}
+      isRevealingCards={revealCards.isPending}
       onAddCard={async (columnId, text) => { await addCard.mutateAsync({ columnId, text }); }}
       onEditCard={(cardId, text) => editCard.mutate({ cardId, text })}
       onVote={(cardId) => toggleVote.mutate(cardId)}
       onAdvance={() => advancePhase.mutate()}
       onNavigateStage={(phase, activeColumnIndex) => navigateStage.mutate({ phase, activeColumnIndex })}
       onUpdateSettings={(settings) => updateSettings.mutateAsync(settings)}
+      onRevealCards={() => revealCards.mutate()}
       onPause={() => pauseSession.mutate()}
       onResume={() => resumeSession.mutate()}
       onClose={() => void handleClose()}

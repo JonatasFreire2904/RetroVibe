@@ -14,6 +14,7 @@ public sealed record SessionCardDto(
 public sealed record SessionColumnDto(string Id, string Key, string Label, string Icon, List<SessionCardDto> Cards);
 
 public sealed record SessionBoardDto(
-    string Id, string? Title, SessionStatus Status, SessionPhase Phase, bool SequentialFlow, int ActiveColumnIndex, PrivacyMode PrivacyMode, bool ActionCardsEnabled,
+    string Id, string? Title, SessionStatus Status, SessionPhase Phase, bool SequentialFlow, int ActiveColumnIndex, PrivacyMode PrivacyMode,
+    bool ActionCardsEnabled, bool CardBlurEnabled, bool CardsRevealed,
     TemplateDto Template, ThemeDto Theme, SquadRefDto Squad, DateTime CreatedAt, DateTime? ClosedAt,
     int DurationMinutes, int ParticipantsCount, int ActionItemsCount, List<SessionColumnDto> Columns);

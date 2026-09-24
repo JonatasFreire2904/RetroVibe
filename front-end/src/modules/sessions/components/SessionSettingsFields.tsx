@@ -7,10 +7,12 @@ interface Props {
   onSequentialFlowChange: (value: boolean) => void;
   actionCardsEnabled: boolean;
   onActionCardsEnabledChange: (value: boolean) => void;
+  cardBlurEnabled: boolean;
+  onCardBlurEnabledChange: (value: boolean) => void;
 }
 
 export function SessionSettingsFields({ privacyMode, onPrivacyModeChange, sequentialFlow, onSequentialFlowChange,
-  actionCardsEnabled, onActionCardsEnabledChange }: Props) {
+  actionCardsEnabled, onActionCardsEnabledChange, cardBlurEnabled, onCardBlurEnabledChange }: Props) {
   return <div className="space-y-5">
     <fieldset>
       <legend className="mb-2 text-sm font-semibold text-slate-800">Privacidade</legend>
@@ -29,8 +31,10 @@ export function SessionSettingsFields({ privacyMode, onPrivacyModeChange, sequen
     </fieldset>
     <SettingSwitch value={sequentialFlow} onChange={onSequentialFlowChange} title="Fluxo sequencial de etapas"
       description="Os participantes concluem cada coluna antes de passar para a próxima. Desative para preencher todas ao mesmo tempo." />
-    <SettingSwitch value={actionCardsEnabled} onChange={onActionCardsEnabledChange} title="Cards de ação"
-      description="Permite criar itens de ação nesta sessão e acompanhar responsáveis e progresso na tela de Itens de Ação." />
+    <SettingSwitch value={actionCardsEnabled} onChange={onActionCardsEnabledChange} title="Coluna de Itens de Ação"
+      description="Uma coluna extra de Itens de Ação aparece ao final do quadro para registrar compromissos da equipe." />
+    <SettingSwitch value={cardBlurEnabled} onChange={onCardBlurEnabledChange} title="Card Blur"
+      description="Cards criados por outras pessoas ficam borrados até o facilitador liberar a visualização. Evita ancoragem de opiniões." />
   </div>;
 }
 

@@ -136,6 +136,56 @@ public sealed class ApiTests : IDisposable
     }
 
     [Fact]
+    public async Task CardBlurPersistsAndOnlyStaffCanRevealCards()
+    {
+        var token = await LoginAsync("marcos");
+        var board = await CreateSessionAsync(token);
+        Assert.True(board.CardBlurEnabled);
+        Assert.False(board.CardsRevealed);
+
+        var join = await _client.PostAsJsonAsync($"/api/sessions/{board.Id}/join", new { displayName = "Visitante" });
+        var participant = (await join.Content.ReadFromJsonAsync<JoinSessionResultDto>(JsonHelper.Options))!;
+        var blocked = await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{board.Id}/reveal-cards", participant.Token));
+        Assert.Equal(HttpStatusCode.Forbidden, blocked.StatusCode);
+
+        var reveal = await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{board.Id}/reveal-cards", token));
+        reveal.EnsureSuccessStatusCode();
+        var revealed = (await reveal.Content.ReadFromJsonAsync<SessionBoardDto>(JsonHelper.Options))!;
+        Assert.True(revealed.CardsRevealed);
+
+        var reload = await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/sessions/{board.Id}", participant.Token));
+        var participantBoard = (await reload.Content.ReadFromJsonAsync<SessionBoardDto>(JsonHelper.Options))!;
+        Assert.True(participantBoard.CardsRevealed);
+
+        var settings = await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{board.Id}/settings", token,
+            new { title = "Sprint", privacyMode = "IDENTIFIED", sequentialFlow = false, actionCardsEnabled = true, cardBlurEnabled = false }));
+        settings.EnsureSuccessStatusCode();
+        var updated = (await settings.Content.ReadFromJsonAsync<SessionBoardDto>(JsonHelper.Options))!;
+        Assert.False(updated.CardBlurEnabled);
+    }
+
+    [Fact]
+    public async Task ParticipantCanReadOnlyTheirSessionActionItems()
+    {
+        var token = await LoginAsync("marcos");
+        var own = await CreateSessionAsync(token);
+        var other = await CreateSessionAsync(token);
+        var create = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/action-items", token,
+            new { sessionId = own.Id, description = "Definir próximo passo" }));
+        create.EnsureSuccessStatusCode();
+
+        var join = await _client.PostAsJsonAsync($"/api/sessions/{own.Id}/join", new { displayName = "Visitante" });
+        var participant = (await join.Content.ReadFromJsonAsync<JoinSessionResultDto>(JsonHelper.Options))!;
+        var ownItems = await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/sessions/{own.Id}/action-items", participant.Token));
+        ownItems.EnsureSuccessStatusCode();
+        var items = (await ownItems.Content.ReadFromJsonAsync<List<ActionItemDto>>(JsonHelper.Options))!;
+        Assert.Contains(items, item => item.Description == "Definir próximo passo");
+
+        var otherItems = await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/sessions/{other.Id}/action-items", participant.Token));
+        Assert.Equal(HttpStatusCode.Forbidden, otherItems.StatusCode);
+    }
+
+    [Fact]
     public async Task ActionCardsRespectSessionSettingAndAllowChangingAssignee()
     {
         var token = await LoginAsync("marcos");

@@ -1,11 +1,9 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import type { PrivacyMode, SessionBoard, SessionPhase } from "@/shared/types";
-import { useActionItemsQuery } from "@/modules/action-items/api/queries";
-import { useCreateActionItemMutation } from "@/modules/action-items/api/mutations";
-import { ActionItemRow } from "@/modules/action-items/components/ActionItemRow";
-import { useSessionAssigneesQuery } from "../api/queries";
+import { useSessionActionItemsQuery, useSessionAssigneesQuery } from "../api/queries";
 import { getRetroColumnAppearance, getRetroTheme } from "../retroTheme";
+import { ActionBoardColumn } from "./ActionBoardColumn";
 import { BoardColumn } from "./BoardColumn";
 import { ThemeTrim } from "./ThemeTrim";
 import { EditSessionSettingsModal } from "./EditSessionSettingsModal";
@@ -21,12 +19,14 @@ interface RetroBoardViewProps {
   isResuming?: boolean;
   isClosing?: boolean;
   isUpdatingSettings?: boolean;
+  isRevealingCards?: boolean;
   onAddCard: (columnId: string, text: string) => Promise<void>;
   onEditCard: (cardId: string, text: string) => void;
   onVote: (cardId: string) => void;
   onAdvance?: () => void;
   onNavigateStage?: (phase: SessionPhase, activeColumnIndex: number) => void;
-  onUpdateSettings?: (settings: { title: string | null; privacyMode: PrivacyMode; sequentialFlow: boolean; actionCardsEnabled: boolean }) => Promise<unknown>;
+  onUpdateSettings?: (settings: { title: string | null; privacyMode: PrivacyMode; sequentialFlow: boolean; actionCardsEnabled: boolean; cardBlurEnabled: boolean }) => Promise<unknown>;
+  onRevealCards?: () => void;
   onPause?: () => void;
   onResume?: () => void;
   onClose?: () => void;
@@ -39,8 +39,8 @@ function formatTimer(seconds: number): string {
 
 export function RetroBoardView({
   board, isFacilitator, participantName, isAddingCard, isAdvancing = false, isPausing = false,
-  isResuming = false, isClosing = false, isUpdatingSettings = false, onAddCard, onEditCard, onVote, onAdvance,
-  onNavigateStage, onUpdateSettings, onPause, onResume, onClose,
+  isResuming = false, isClosing = false, isUpdatingSettings = false, isRevealingCards = false,
+  onAddCard, onEditCard, onVote, onAdvance, onNavigateStage, onUpdateSettings, onRevealCards, onPause, onResume, onClose,
 }: RetroBoardViewProps) {
   const theme = getRetroTheme(board.theme.key);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -48,10 +48,8 @@ export function RetroBoardView({
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [actionDraft, setActionDraft] = useState("");
-  const { data: actionItems = [] } = useActionItemsQuery({ sessionId: isFacilitator && board.actionCardsEnabled ? board.id : undefined });
+  const { data: actionItems = [] } = useSessionActionItemsQuery(board.id, board.actionCardsEnabled);
   const { data: assignees = [] } = useSessionAssigneesQuery(isFacilitator ? board.id : undefined);
-  const createActionItem = useCreateActionItemMutation();
 
   useEffect(() => {
     if (!timerRunning || board.status !== "ACTIVE") return;
@@ -130,6 +128,10 @@ export function RetroBoardView({
 
           <div className="retro-session-controls">
             {isFacilitator && board.status !== "COMPLETED" && <button type="button" className="retro-header-action" onClick={() => setSettingsOpen(true)}>⚙ <span>Configurações</span></button>}
+            {isFacilitator && board.status === "ACTIVE" && board.phase === "COLLECTING" && board.cardBlurEnabled && !board.cardsRevealed &&
+              <button type="button" className="retro-header-action" disabled={isRevealingCards} onClick={onRevealCards}>
+                👁 <span>{isRevealingCards ? "Revelando…" : "Revelar cards"}</span>
+              </button>}
             <div className="retro-timer" aria-label={`Timer ${formatTimer(secondsLeft)}`}>
               <span className="retro-timer-ring" />
               <strong>{formatTimer(secondsLeft)}</strong>
@@ -164,7 +166,7 @@ export function RetroBoardView({
       {board.status === "COMPLETED" && <div className="retro-status-banner">✓ Sessão encerrada · visualização somente leitura</div>}
 
       <main className="retro-board-scroll">
-        <div className="retro-board-track" style={{ "--retro-column-count": board.columns.length } as CSSProperties}>
+        <div className="retro-board-track" style={{ "--retro-column-count": board.columns.length + (board.actionCardsEnabled ? 1 : 0) } as CSSProperties}>
           {board.columns.map((column, index) => {
             const isFuture = collecting && board.sequentialFlow && index > activeIndex;
             const isCurrent = collecting && (board.sequentialFlow ? index === activeIndex : true);
@@ -182,33 +184,25 @@ export function RetroBoardView({
                 canAddCard={canAdd && !isFuture}
                 canVote={canVote}
                 canEditOwnCards={board.status !== "COMPLETED"}
+                cardBlurred={board.cardBlurEnabled && !board.cardsRevealed && collecting}
                 isAddingCard={isAddingCard}
                 isAdvancing={isAdvancing}
-                advanceLabel={isFacilitator && board.status === "ACTIVE" && index === advanceIndex ? advanceLabel : undefined}
-                onAdvance={isFacilitator && board.status === "ACTIVE" && index === advanceIndex ? (board.phase === "DISCUSSING" ? onClose : onAdvance) : undefined}
+                advanceLabel={isFacilitator && board.status === "ACTIVE" && index === advanceIndex &&
+                  !(board.actionCardsEnabled && board.phase === "DISCUSSING") ? advanceLabel : undefined}
+                onAdvance={isFacilitator && board.status === "ACTIVE" && index === advanceIndex &&
+                  !(board.actionCardsEnabled && board.phase === "DISCUSSING") ? (board.phase === "DISCUSSING" ? onClose : onAdvance) : undefined}
                 onVote={onVote}
                 onAddCard={(text) => onAddCard(column.id, text)}
                 onEditCard={onEditCard}
               />
             );
           })}
+          {board.actionCardsEnabled && <ActionBoardColumn sessionId={board.id} theme={theme}
+            palette={theme.palettes[board.columns.length % theme.palettes.length]}
+            items={actionItems} assignees={assignees} isFacilitator={isFacilitator}
+            isActive={board.status === "ACTIVE"} isClosing={isClosing}
+            onClose={isFacilitator && board.status === "ACTIVE" && board.phase === "DISCUSSING" ? onClose : undefined} />}
         </div>
-        {isFacilitator && board.actionCardsEnabled && <section className="retro-action-panel" aria-label="Cards de ação">
-          <h2>📌 Cards de ação</h2>
-          <p>Registre os próximos passos da retrospectiva. Os itens aparecem no acompanhamento de ações.</p>
-          {board.status !== "COMPLETED" && <form onSubmit={event => {
-            event.preventDefault();
-            const description = actionDraft.trim();
-            if (!description) return;
-            createActionItem.mutate({ sessionId: board.id, description }, { onSuccess: () => setActionDraft("") });
-          }}>
-            <input value={actionDraft} onChange={event => setActionDraft(event.target.value)} maxLength={280} placeholder="Descreva uma ação para o time..." aria-label="Novo card de ação" />
-            <button type="submit" disabled={!actionDraft.trim() || createActionItem.isPending}>Adicionar ação</button>
-          </form>}
-          {createActionItem.isError && <p role="alert">Não foi possível criar o card de ação.</p>}
-          <div className="retro-action-list">{actionItems.map(item => <ActionItemRow key={item.id} item={item} assignees={assignees} />)}</div>
-          {actionItems.length === 0 && <p>Ainda não há cards de ação nesta sessão.</p>}
-        </section>}
       </main>
       {isFacilitator && onUpdateSettings && <EditSessionSettingsModal board={board} open={settingsOpen} saving={isUpdatingSettings}
         onClose={() => setSettingsOpen(false)} onSave={onUpdateSettings} />}

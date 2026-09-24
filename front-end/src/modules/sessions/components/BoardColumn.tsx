@@ -15,6 +15,7 @@ interface BoardColumnProps {
   canAddCard: boolean;
   canVote: boolean;
   canEditOwnCards: boolean;
+  cardBlurred: boolean;
   isAddingCard: boolean;
   isAdvancing: boolean;
   advanceLabel?: string;
@@ -26,7 +27,7 @@ interface BoardColumnProps {
 
 export function BoardColumn({
   sessionId, column, appearance, theme, isCurrent, isFuture, isDone, canAddCard, canVote,
-  canEditOwnCards, isAddingCard, isAdvancing, advanceLabel, onAdvance, onVote, onAddCard, onEditCard,
+  canEditOwnCards, cardBlurred, isAddingCard, isAdvancing, advanceLabel, onAdvance, onVote, onAddCard, onEditCard,
 }: BoardColumnProps) {
   const [draft, setDraft] = useState("");
   const [composing, setComposing] = useState(false);
@@ -74,7 +75,8 @@ export function BoardColumn({
             sessionId={sessionId}
             card={card}
             theme={theme}
-            blurred={isFuture}
+            blurred={isFuture || (cardBlurred && !card.isMine)}
+            blurMessage={isFuture ? "Aguardando etapa anterior" : "Aguardando o facilitador revelar os cards"}
             canVote={canVote}
             canEdit={canEditOwnCards && card.isMine}
             onVote={() => onVote(card.id)}

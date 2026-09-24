@@ -72,6 +72,8 @@ export interface SessionBoard {
   activeColumnIndex: number;
   privacyMode: PrivacyMode;
   actionCardsEnabled: boolean;
+  cardBlurEnabled: boolean;
+  cardsRevealed: boolean;
   template: Template;
   theme: Theme;
   squad: { id: string; name: string };

@@ -19,6 +19,8 @@ public sealed class RetroSessionConfiguration : IEntityTypeConfiguration<RetroSe
         builder.Property(s => s.Phase).HasColumnName("phase").HasConversion<string>().IsRequired();
         builder.Property(s => s.SequentialFlow).HasColumnName("sequential_flow").HasDefaultValue(false);
         builder.Property(s => s.ActionCardsEnabled).HasColumnName("action_cards_enabled").HasDefaultValue(true);
+        builder.Property(s => s.CardBlurEnabled).HasColumnName("card_blur_enabled").HasDefaultValue(false);
+        builder.Property(s => s.CardsRevealed).HasColumnName("cards_revealed").HasDefaultValue(false);
         builder.Property(s => s.StageStartedAt).HasColumnName("stage_started_at");
         builder.Property(s => s.CollectSeconds).HasColumnName("collect_seconds").HasDefaultValue(0);
         builder.Property(s => s.VoteSeconds).HasColumnName("vote_seconds").HasDefaultValue(0);

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { httpClient } from "@/shared/lib/httpClient";
 import { getParticipantToken } from "@/shared/lib/participantToken";
-import type { Comment, HomeData, SessionBoard, SessionSummary } from "@/shared/types";
+import type { ActionItem, Comment, HomeData, SessionBoard, SessionSummary } from "@/shared/types";
 
 export const sessionKeys = {
   home: ["sessions", "home"] as const,
@@ -60,5 +60,14 @@ export function useSessionAssigneesQuery(sessionId: string | undefined) {
     queryKey: ["sessions", "assignees", sessionId],
     queryFn: () => httpClient.get<{ id: string; name: string; avatarColor: string }[]>(`/sessions/${sessionId}/assignees`),
     enabled: Boolean(sessionId),
+  });
+}
+
+export function useSessionActionItemsQuery(sessionId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["action-items", "session", sessionId],
+    queryFn: () => httpClient.get<ActionItem[]>(`/sessions/${sessionId}/action-items`),
+    enabled,
+    refetchInterval: enabled ? 3000 : false,
   });
 }

@@ -106,6 +106,18 @@ namespace RetroVibe.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("action_cards_enabled");
 
+                    b.Property<bool>("CardBlurEnabled")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("card_blur_enabled");
+
+                    b.Property<bool>("CardsRevealed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false)
+                        .HasColumnName("cards_revealed");
+
                     b.Property<int>("ActiveColumnIndex")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")

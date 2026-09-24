@@ -42,6 +42,8 @@ public sealed class RetroSession
     public SessionPhase Phase { get; private set; }
     public bool SequentialFlow { get; private set; }
     public bool ActionCardsEnabled { get; private set; }
+    public bool CardBlurEnabled { get; private set; }
+    public bool CardsRevealed { get; private set; }
     public int ActiveColumnIndex { get; private set; }
     public PrivacyMode PrivacyMode { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -62,7 +64,8 @@ public sealed class RetroSession
 
     public static RetroSession Create(
         string id, string? title, string templateId, string themeId, string squadId,
-        PrivacyMode privacyMode, IEnumerable<RetroColumn> columns, bool sequentialFlow = false, bool actionCardsEnabled = true)
+        PrivacyMode privacyMode, IEnumerable<RetroColumn> columns, bool sequentialFlow = false, bool actionCardsEnabled = true,
+        bool cardBlurEnabled = true)
     {
         var session = new RetroSession
         {
@@ -75,6 +78,8 @@ public sealed class RetroSession
             Phase = SessionPhase.Collecting,
             SequentialFlow = sequentialFlow,
             ActionCardsEnabled = actionCardsEnabled,
+            CardBlurEnabled = cardBlurEnabled,
+            CardsRevealed = false,
             ActiveColumnIndex = 0,
             PrivacyMode = privacyMode,
             CreatedAt = DateTime.UtcNow,
@@ -94,7 +99,8 @@ public sealed class RetroSession
         DateTime createdAt, DateTime? closedAt, int participantsCount,
         double? feedbackScore, PhaseDurations? phaseDurations, IEnumerable<RetroColumn> columns,
         bool sequentialFlow = false, int activeColumnIndex = 0, bool actionCardsEnabled = true,
-        DateTime? stageStartedAt = null, int collectSeconds = 0, int voteSeconds = 0, int discussSeconds = 0)
+        DateTime? stageStartedAt = null, int collectSeconds = 0, int voteSeconds = 0, int discussSeconds = 0,
+        bool cardBlurEnabled = false, bool cardsRevealed = false)
     {
         var session = new RetroSession
         {
@@ -107,6 +113,8 @@ public sealed class RetroSession
             Phase = phase,
             SequentialFlow = sequentialFlow,
             ActionCardsEnabled = actionCardsEnabled,
+            CardBlurEnabled = cardBlurEnabled,
+            CardsRevealed = cardsRevealed,
             ActiveColumnIndex = activeColumnIndex,
             PrivacyMode = privacyMode,
             CreatedAt = createdAt,
@@ -231,6 +239,7 @@ public sealed class RetroSession
 
         RecordPhaseTime();
         Phase = PhaseOrder[currentIndex + 1];
+        if (Phase != SessionPhase.Collecting) CardsRevealed = true;
         return Result<SessionPhase>.Ok(Phase);
     }
 
@@ -244,11 +253,21 @@ public sealed class RetroSession
             return Result<Unit>.Fail(DomainFailure.Validation("Fase inválida"));
         if (phase != Phase) RecordPhaseTime();
         Phase = phase;
+        if (Phase != SessionPhase.Collecting) CardsRevealed = true;
         ActiveColumnIndex = activeColumnIndex;
         return Result<Unit>.Ok(Unit.Value);
     }
 
-    public Result<Unit> UpdateSettings(string? title, PrivacyMode privacyMode, bool sequentialFlow, bool actionCardsEnabled)
+    public Result<Unit> RevealCards()
+    {
+        if (Status != SessionStatus.Active || Phase != SessionPhase.Collecting)
+            return Result<Unit>.Fail(DomainFailure.Conflict("Os cards só podem ser revelados durante a coleta ativa"));
+        CardsRevealed = true;
+        return Result<Unit>.Ok(Unit.Value);
+    }
+
+    public Result<Unit> UpdateSettings(string? title, PrivacyMode privacyMode, bool sequentialFlow, bool actionCardsEnabled,
+        bool cardBlurEnabled)
     {
         if (Status == SessionStatus.Completed)
             return Result<Unit>.Fail(DomainFailure.Conflict("A sessão já foi encerrada"));
@@ -259,6 +278,9 @@ public sealed class RetroSession
         PrivacyMode = privacyMode;
         SequentialFlow = sequentialFlow;
         ActionCardsEnabled = actionCardsEnabled;
+        if (cardBlurEnabled && !CardBlurEnabled && Phase == SessionPhase.Collecting)
+            CardsRevealed = false;
+        CardBlurEnabled = cardBlurEnabled;
         if (ActiveColumnIndex >= _columns.Count) ActiveColumnIndex = Math.Max(0, _columns.Count - 1);
         return Result<Unit>.Ok(Unit.Value);
     }

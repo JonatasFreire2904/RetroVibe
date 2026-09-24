@@ -1,20 +1,18 @@
 using MediatR;
 using RetroVibe.Application.Dtos;
 using RetroVibe.Application.Support;
-using RetroVibe.Domain.Entities;
 using RetroVibe.Domain.Kernel;
 using RetroVibe.Domain.Repositories;
 
 namespace RetroVibe.Application.Commands;
 
-public sealed record UpdateSessionSettingsCommand(string SessionId, string? Title, PrivacyMode PrivacyMode,
-    bool SequentialFlow, bool ActionCardsEnabled, bool? CardBlurEnabled, string RequestedBy) : IRequest<Result<SessionBoardDto>>;
+public sealed record RevealSessionCardsCommand(string SessionId, string RequestedBy) : IRequest<Result<SessionBoardDto>>;
 
-public sealed class UpdateSessionSettingsCommandHandler(
+public sealed class RevealSessionCardsCommandHandler(
     ISessionRepository sessions, ICatalogRepository catalog, IActionItemRepository actionItems, IUserRepository users)
-    : IRequestHandler<UpdateSessionSettingsCommand, Result<SessionBoardDto>>
+    : IRequestHandler<RevealSessionCardsCommand, Result<SessionBoardDto>>
 {
-    public async Task<Result<SessionBoardDto>> Handle(UpdateSessionSettingsCommand request, CancellationToken ct)
+    public async Task<Result<SessionBoardDto>> Handle(RevealSessionCardsCommand request, CancellationToken ct)
     {
         var session = await sessions.FindByIdAsync(request.SessionId, ct);
         if (session is null) return Result<SessionBoardDto>.Fail(DomainFailure.NotFound("Sessão não encontrada"));
@@ -23,9 +21,8 @@ public sealed class UpdateSessionSettingsCommandHandler(
         var access = SquadAccessGuard.AssertSquadAccess(user, session.SquadId);
         if (!access.IsOk) return Result<SessionBoardDto>.FromFailure(access);
 
-        var updated = session.UpdateSettings(request.Title, request.PrivacyMode, request.SequentialFlow, request.ActionCardsEnabled,
-            request.CardBlurEnabled ?? session.CardBlurEnabled);
-        if (!updated.IsOk) return Result<SessionBoardDto>.FromFailure(updated);
+        var revealed = session.RevealCards();
+        if (!revealed.IsOk) return Result<SessionBoardDto>.FromFailure(revealed);
         await sessions.SaveAsync(session, ct);
         return await BoardAssembler.AssembleBoardAfterMutation(session, user.Id, catalog, actionItems, ct);
     }

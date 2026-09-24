@@ -11,13 +11,14 @@ interface RetroCardItemProps {
   card: SessionCard;
   theme: RetroTheme;
   blurred: boolean;
+  blurMessage: string;
   canVote: boolean;
   canEdit: boolean;
   onVote: () => void;
   onEdit: (text: string) => void;
 }
 
-export function RetroCardItem({ sessionId, card, theme, blurred, canVote, canEdit, onVote, onEdit }: RetroCardItemProps) {
+export function RetroCardItem({ sessionId, card, theme, blurred, blurMessage, canVote, canEdit, onVote, onEdit }: RetroCardItemProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(card.text);
   const [showComments, setShowComments] = useState(false);
@@ -34,7 +35,7 @@ export function RetroCardItem({ sessionId, card, theme, blurred, canVote, canEdi
 
   return (
     <div className="retro-card">
-      <div className={blurred ? "retro-card-obscured" : ""}>
+      <div className={blurred ? "retro-card-obscured" : ""} aria-hidden={blurred}>
         {editing ? (
           <div className="retro-card-edit">
             <textarea autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} rows={3} />
@@ -46,7 +47,7 @@ export function RetroCardItem({ sessionId, card, theme, blurred, canVote, canEdi
         ) : (
           <p className="retro-card-text"><span aria-hidden="true">{theme.cardIcon}</span> {card.text}</p>
         )}
-        <div className="retro-card-meta">
+        {!blurred && <div className="retro-card-meta">
           <span className="retro-card-author"><span className="retro-avatar">{author.charAt(0)}</span>{author}</span>
           <div className="retro-card-actions">
             <button type="button" aria-label={`Comentários: ${card.commentsCount}`} onClick={() => setShowComments(value => !value)}>
@@ -57,9 +58,9 @@ export function RetroCardItem({ sessionId, card, theme, blurred, canVote, canEdi
             </button>
             {canEdit && !editing && <button type="button" aria-label="Editar card" onClick={() => setEditing(true)}><PencilIcon width={13} height={13} /></button>}
           </div>
-        </div>
+        </div>}
       </div>
-      {blurred && <div className="retro-card-lock">🔒 Oculto até a votação</div>}
+      {blurred && <div className="retro-card-lock">🔒 {blurMessage}</div>}
       {showComments && !blurred && (
         <CommentThread
           comments={commentsQuery.data}

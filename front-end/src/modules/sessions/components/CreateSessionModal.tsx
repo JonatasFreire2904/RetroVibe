@@ -26,6 +26,7 @@ export function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
   const [privacyMode, setPrivacyMode] = useState<PrivacyMode>("IDENTIFIED");
   const [sequentialFlow, setSequentialFlow] = useState(true);
   const [actionCardsEnabled, setActionCardsEnabled] = useState(true);
+  const [cardBlurEnabled, setCardBlurEnabled] = useState(true);
 
   const { data: templates = [] } = useTemplatesQuery();
   const { data: themes = [] } = useThemesQuery();
@@ -52,6 +53,7 @@ export function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
     setPrivacyMode("IDENTIFIED");
     setSequentialFlow(true);
     setActionCardsEnabled(true);
+    setCardBlurEnabled(true);
     createSession.reset();
   }
 
@@ -70,6 +72,7 @@ export function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
       privacyMode,
       sequentialFlow,
       actionCardsEnabled,
+      cardBlurEnabled,
     });
     reset();
     onClose();
@@ -220,7 +223,8 @@ export function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
         <div>
           <SessionSettingsFields privacyMode={privacyMode} onPrivacyModeChange={setPrivacyMode}
             sequentialFlow={sequentialFlow} onSequentialFlowChange={setSequentialFlow}
-            actionCardsEnabled={actionCardsEnabled} onActionCardsEnabledChange={setActionCardsEnabled} />
+            actionCardsEnabled={actionCardsEnabled} onActionCardsEnabledChange={setActionCardsEnabled}
+            cardBlurEnabled={cardBlurEnabled} onCardBlurEnabledChange={setCardBlurEnabled} />
           {createSession.isError && <p className="mt-3 text-sm text-rose-600">Não foi possível criar a sessão. Tente novamente.</p>}
         </div>
       )}

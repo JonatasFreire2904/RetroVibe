@@ -60,6 +60,19 @@ const themes: Record<string, RetroTheme> = {
         stop: { label: "Apagar o Fogo", icon: "💧" },
         continue: { label: "Continuar no Baile!", icon: "🎶" },
       },
+      starfish: {
+        keep: { label: "Manter o Arraiá!", icon: "🎉" },
+        more: { label: "Mais Arrasta-pé!", icon: "🎶" },
+        less: { label: "Menos Perrengue", icon: "🌽" },
+        stop: { label: "Apagar o Fogo", icon: "💧" },
+        start: { label: "Acender a Fogueira!", icon: "🔥" },
+      },
+      "4ls": {
+        liked: { label: "Melhor do Arraiá", icon: "🎉" },
+        learned: { label: "Aprendi na Quadrilha", icon: "🎶" },
+        lacked: { label: "Faltou na Festa", icon: "🌽" },
+        "longed-for": { label: "Desejo para o Próximo Arraiá", icon: "✨" },
+      },
     },
   },
   natal: {
@@ -72,6 +85,18 @@ const themes: Record<string, RetroTheme> = {
       { background: "#fff1e8", border: "#f1cfb7", accent: "#bf693e", card: "#fffaf4" },
     ],
     overrides: {
+      "start-stop-continue": {
+        start: { label: "Acender as Luzes", icon: "✨" },
+        stop: { label: "Deixar no Passado", icon: "🎁" },
+        continue: { label: "Manter a Magia", icon: "🎄" },
+      },
+      starfish: {
+        keep: { label: "Manter a Magia", icon: "🎄" },
+        more: { label: "Mais Espírito Natalino", icon: "🎁" },
+        less: { label: "Menos Correria", icon: "❄️" },
+        stop: { label: "Deixar no Passado", icon: "🛷" },
+        start: { label: "Acender as Luzes", icon: "✨" },
+      },
       "4ls": {
         liked: { label: "Hora da Ceia!", icon: "🎄" },
         learned: { label: "Ensaio da Cantiga", icon: "🎶" },
@@ -90,12 +115,23 @@ const themes: Record<string, RetroTheme> = {
       { background: "#fff6ee", border: "#f4dfcc", accent: "#e79770", card: "#fffbf6" },
     ],
     overrides: {
+      "start-stop-continue": {
+        start: { label: "Começar a Caça", icon: "🥚" },
+        stop: { label: "Sair da Toca!", icon: "🐇" },
+        continue: { label: "Manter a Alegria", icon: "🐰" },
+      },
       starfish: {
         keep: { label: "Cesta Cheia", icon: "🧺" },
         more: { label: "Mais Chocolate!", icon: "🍫" },
         less: { label: "Sem Tristeza!", icon: "🌈" },
         stop: { label: "Sair da Toca!", icon: "🐇", prompt: "O que devemos eliminar?" },
         start: { label: "Caça aos Ovos", icon: "🥚", prompt: "O que deveríamos iniciar?" },
+      },
+      "4ls": {
+        liked: { label: "Ovo Favorito", icon: "🥚" },
+        learned: { label: "Surpresa na Cesta", icon: "🧺" },
+        lacked: { label: "Faltou Chocolate", icon: "🍫" },
+        "longed-for": { label: "Desejo de Páscoa", icon: "🐰" },
       },
     },
   },
@@ -113,6 +149,19 @@ const themes: Record<string, RetroTheme> = {
         start: { label: "Declare seu Amor!", icon: "💌", prompt: "O que devemos começar a fazer?" },
         stop: { label: "Cortar o Ciúme", icon: "💔", prompt: "O que devemos parar de fazer?" },
         continue: { label: "Continuar Apaixonado!", icon: "🌹", prompt: "O que devemos continuar fazendo?" },
+      },
+      starfish: {
+        keep: { label: "Continuar Apaixonado!", icon: "🌹" },
+        more: { label: "Mais Carinho!", icon: "💖" },
+        less: { label: "Menos Ciúme", icon: "💞" },
+        stop: { label: "Cortar o Ciúme", icon: "💔" },
+        start: { label: "Declare seu Amor!", icon: "💌" },
+      },
+      "4ls": {
+        liked: { label: "Amei", icon: "💕" },
+        learned: { label: "Aprendi a Amar", icon: "💡" },
+        lacked: { label: "Senti Falta", icon: "💔" },
+        "longed-for": { label: "Sonho a Dois", icon: "🌹" },
       },
     },
   },

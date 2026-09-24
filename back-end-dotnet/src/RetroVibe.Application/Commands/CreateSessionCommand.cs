@@ -9,7 +9,7 @@ namespace RetroVibe.Application.Commands;
 
 public sealed record CreateSessionCommand(
     string? Title, string TemplateId, string? ThemeId, string SquadName, PrivacyMode? PrivacyMode,
-    bool? SequentialFlow, bool? ActionCardsEnabled, string RequestedBy)
+    bool? SequentialFlow, bool? ActionCardsEnabled, bool? CardBlurEnabled, string RequestedBy)
     : IRequest<Result<SessionBoardDto>>;
 
 public sealed class CreateSessionCommandHandler(ISessionRepository sessions, ICatalogRepository catalog, IUserRepository users)
@@ -76,7 +76,7 @@ public sealed class CreateSessionCommandHandler(ISessionRepository sessions, ICa
         var session = RetroSession.Create(
             Guid.NewGuid().ToString(), request.Title, template.Id, theme.Id, squad.Id,
             request.PrivacyMode ?? Domain.Entities.PrivacyMode.Identified, columns, request.SequentialFlow ?? false,
-            request.ActionCardsEnabled ?? true);
+            request.ActionCardsEnabled ?? true, request.CardBlurEnabled ?? true);
 
         await sessions.SaveAsync(session, ct);
 

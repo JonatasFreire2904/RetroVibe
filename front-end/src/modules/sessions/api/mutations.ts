@@ -29,6 +29,7 @@ export interface CreateSessionInput {
   privacyMode?: PrivacyMode;
   sequentialFlow?: boolean;
   actionCardsEnabled?: boolean;
+  cardBlurEnabled?: boolean;
 }
 
 export function useCreateSessionMutation() {
@@ -129,6 +130,10 @@ export function useNavigateStageMutation(sessionId: string) {
   return useSessionMutation<{ phase: SessionPhase; activeColumnIndex: number }>(sessionId, "/stage");
 }
 
+export function useRevealSessionCardsMutation(sessionId: string) {
+  return useSessionMutation(sessionId, "/reveal-cards");
+}
+
 export function useUpdateSessionSettingsMutation(sessionId: string) {
-  return useSessionMutation<{ title: string | null; privacyMode: PrivacyMode; sequentialFlow: boolean; actionCardsEnabled: boolean }>(sessionId, "/settings");
+  return useSessionMutation<{ title: string | null; privacyMode: PrivacyMode; sequentialFlow: boolean; actionCardsEnabled: boolean; cardBlurEnabled: boolean }>(sessionId, "/settings");
 }

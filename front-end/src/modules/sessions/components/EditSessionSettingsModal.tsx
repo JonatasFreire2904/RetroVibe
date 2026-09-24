@@ -9,7 +9,7 @@ interface Props {
   open: boolean;
   saving: boolean;
   onClose: () => void;
-  onSave: (settings: { title: string | null; privacyMode: PrivacyMode; sequentialFlow: boolean; actionCardsEnabled: boolean }) => Promise<unknown>;
+  onSave: (settings: { title: string | null; privacyMode: PrivacyMode; sequentialFlow: boolean; actionCardsEnabled: boolean; cardBlurEnabled: boolean }) => Promise<unknown>;
 }
 
 export function EditSessionSettingsModal({ board, open, saving, onClose, onSave }: Props) {
@@ -17,6 +17,7 @@ export function EditSessionSettingsModal({ board, open, saving, onClose, onSave 
   const [privacyMode, setPrivacyMode] = useState(board.privacyMode);
   const [sequentialFlow, setSequentialFlow] = useState(board.sequentialFlow);
   const [actionCardsEnabled, setActionCardsEnabled] = useState(board.actionCardsEnabled);
+  const [cardBlurEnabled, setCardBlurEnabled] = useState(board.cardBlurEnabled);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -25,13 +26,14 @@ export function EditSessionSettingsModal({ board, open, saving, onClose, onSave 
     setPrivacyMode(board.privacyMode);
     setSequentialFlow(board.sequentialFlow);
     setActionCardsEnabled(board.actionCardsEnabled);
+    setCardBlurEnabled(board.cardBlurEnabled);
     setError(false);
-  }, [open, board.id, board.title, board.privacyMode, board.sequentialFlow, board.actionCardsEnabled]);
+  }, [open, board.id, board.title, board.privacyMode, board.sequentialFlow, board.actionCardsEnabled, board.cardBlurEnabled]);
 
   async function save() {
     setError(false);
     try {
-      await onSave({ title: title.trim() || null, privacyMode, sequentialFlow, actionCardsEnabled });
+      await onSave({ title: title.trim() || null, privacyMode, sequentialFlow, actionCardsEnabled, cardBlurEnabled });
       onClose();
     } catch {
       setError(true);
@@ -47,7 +49,8 @@ export function EditSessionSettingsModal({ board, open, saving, onClose, onSave 
     </div>
     <SessionSettingsFields privacyMode={privacyMode} onPrivacyModeChange={setPrivacyMode}
       sequentialFlow={sequentialFlow} onSequentialFlowChange={setSequentialFlow}
-      actionCardsEnabled={actionCardsEnabled} onActionCardsEnabledChange={setActionCardsEnabled} />
+      actionCardsEnabled={actionCardsEnabled} onActionCardsEnabledChange={setActionCardsEnabled}
+      cardBlurEnabled={cardBlurEnabled} onCardBlurEnabledChange={setCardBlurEnabled} />
     {error && <p className="mt-3 text-sm text-rose-600">Não foi possível salvar. Tente novamente.</p>}
   </Modal>;
 }

@@ -177,19 +177,33 @@
 
 .retro-status-banner { flex: none; padding: 7px 16px; background: #fff4dc; color: #8a5816; text-align: center; font-size: 12px; font-weight: 800; }
 .retro-board-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px; }
-.retro-action-panel { max-width: 880px; margin: 20px auto; padding: 20px; border-radius: 20px; background: rgba(255,255,255,.92); box-shadow: 0 8px 32px rgba(30,30,60,.1); }
-.retro-action-panel h2 { font-size: 17px; font-weight: 800; }
-.retro-action-panel p { margin-top: 4px; font-size: 12px; color: #64748b; }
-.retro-action-panel form { display: flex; gap: 8px; margin: 16px 0; }
-.retro-action-panel input { min-width: 0; flex: 1; border: 1px solid #d8d2ec; border-radius: 10px; padding: 10px 12px; background: #fff; color: #332b48; }
-.retro-action-panel form button { border-radius: 10px; padding: 10px 14px; background: #7049bd; color: #fff; font-size: 12px; font-weight: 800; }
-.retro-action-panel form button:disabled { opacity: .5; }
-.retro-action-list { display: grid; gap: 8px; }
+.retro-action-column .retro-column-content { display: flex; flex-direction: column; gap: 10px; }
+.retro-action-compose { display: grid; gap: 7px; }
+.retro-action-compose textarea, .retro-action-edit textarea {
+  width: 100%; resize: vertical; border: 1px solid var(--retro-column-border); border-radius: 10px;
+  padding: 9px; background: white; color: #31323b; outline: none; font-size: 12px;
+}
+.retro-action-compose textarea:focus, .retro-action-edit textarea:focus { border-color: var(--retro-column-accent); }
+.retro-action-compose button, .retro-action-edit button:first-child {
+  border-radius: 9px; padding: 8px; background: var(--retro-column-accent); color: white; font-size: 11px; font-weight: 800;
+}
+.retro-action-compose button:disabled, .retro-action-edit button:disabled { opacity: .5; }
+.retro-action-compose p { color: #be123c; font-size: 11px; }
+.retro-action-empty { padding: 12px 4px; color: #717480; font-size: 11px; text-align: center; }
+.retro-action-card { padding: 11px; border: 1px solid var(--retro-column-border); border-top: 4px solid var(--retro-column-accent); border-radius: 12px; background: var(--retro-card-bg); box-shadow: 0 3px 10px rgba(46,31,71,.08); }
+.retro-action-card-title { display: flex; align-items: flex-start; gap: 5px; }
+.retro-action-card-title p { flex: 1; overflow-wrap: anywhere; color: #31323b; font-size: 12px; line-height: 1.4; font-weight: 700; }
+.retro-action-card-title button { flex: none; color: var(--retro-column-accent); font-size: 16px; }
+.retro-action-card-fields { display: grid; gap: 5px; margin-top: 9px; }
+.retro-action-card-fields select, .retro-action-card-fields span { width: 100%; min-width: 0; border: 1px solid var(--retro-column-border); border-radius: 8px; padding: 5px 7px; background: white; color: #565968; font-size: 10px; }
+.retro-action-edit div { display: flex; gap: 5px; margin-top: 5px; }
+.retro-action-edit button { flex: 1; font-size: 10px; }
+.retro-action-edit button:last-child { border-radius: 9px; background: #e9e8f2; color: #626573; }
 .retro-board-track {
   display: grid;
   grid-template-columns: repeat(var(--retro-column-count), minmax(0, 1fr));
   gap: 12px;
-  min-width: calc(var(--retro-column-count) * 220px + (var(--retro-column-count) - 1) * 12px);
+  min-width: calc(var(--retro-column-count) * 190px + (var(--retro-column-count) - 1) * 12px);
   min-height: 100%;
 }
 .retro-column {
