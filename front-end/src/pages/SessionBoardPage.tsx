@@ -41,7 +41,7 @@ export function SessionBoardPage() {
   async function handleClose() {
     if (!window.confirm("Encerrar esta sessão? Ela ficará somente para leitura.")) return;
     await closeSession.mutateAsync(undefined);
-    navigate("/", { replace: true });
+    navigate(board?.surveyEnabled ? `/pesquisa/${sessionId}` : "/", { replace: true });
   }
 
   return (

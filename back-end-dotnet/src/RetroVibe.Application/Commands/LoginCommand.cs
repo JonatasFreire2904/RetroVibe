@@ -26,7 +26,7 @@ public sealed class LoginCommandHandler(
         var token = tokens.IssueToken(user);
         var squad = user.SquadId is null ? null : await catalog.FindSquadByIdAsync(user.SquadId, ct);
 
-        var userDto = new UserDto(user.Id, user.Name, user.Role, squad?.Name, user.AvatarColor, user.AccessLevel);
+        var userDto = new UserDto(user.Id, user.Name, user.Role, squad?.Name, user.AvatarColor, user.AccessLevel, user.IsTest);
         return Result<LoginResultDto>.Ok(new LoginResultDto(token, userDto));
     }
 }

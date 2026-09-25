@@ -9,7 +9,7 @@ namespace RetroVibe.Application.Commands;
 
 public sealed record CreateSessionCommand(
     string? Title, string TemplateId, string? ThemeId, string SquadName, PrivacyMode? PrivacyMode,
-    bool? SequentialFlow, bool? ActionCardsEnabled, bool? CardBlurEnabled, string RequestedBy)
+    bool? SequentialFlow, bool? ActionCardsEnabled, bool? CardBlurEnabled, bool? IsTest, string RequestedBy)
     : IRequest<Result<SessionBoardDto>>;
 
 public sealed class CreateSessionCommandHandler(ISessionRepository sessions, ICatalogRepository catalog, IUserRepository users)
@@ -27,20 +27,7 @@ public sealed class CreateSessionCommandHandler(ISessionRepository sessions, ICa
             return Result<SessionBoardDto>.Fail(DomainFailure.Forbidden("Ação não disponível para participantes"));
         }
 
-        string squadNameInput;
-        if (requester.IsAdmin)
-        {
-            squadNameInput = request.SquadName.Trim();
-        }
-        else
-        {
-            if (requester.SquadId is null)
-            {
-                return Result<SessionBoardDto>.Fail(DomainFailure.Validation("Seu usuário não está associado a nenhum squad"));
-            }
-            var ownSquad = await catalog.FindSquadByIdAsync(requester.SquadId, ct);
-            squadNameInput = ownSquad?.Name ?? "";
-        }
+        var squadNameInput = request.SquadName.Trim();
         if (squadNameInput.Length == 0)
         {
             return Result<SessionBoardDto>.Fail(DomainFailure.Validation("O nome do squad é obrigatório"));
@@ -67,7 +54,10 @@ public sealed class CreateSessionCommandHandler(ISessionRepository sessions, ICa
             return Result<SessionBoardDto>.Fail(DomainFailure.Conflict("Este tema foi desativado pelo administrador"));
         }
 
-        var squad = await catalog.FindOrCreateSquadByNameAsync(squadNameInput, ct);
+        var availableSquads = await catalog.ListSquadsAsync(ct);
+        var squad = availableSquads.FirstOrDefault(s => string.Equals(s.Name, squadNameInput, StringComparison.OrdinalIgnoreCase));
+        if (squad is null || !requester.CanAccessSquad(squad.Id))
+            return Result<SessionBoardDto>.Fail(DomainFailure.Forbidden("Selecione um squad associado à sua conta"));
 
         var columns = template.Columns
             .Select((c, index) => RetroColumn.Create(Guid.NewGuid().ToString(), c.Key, c.Label, c.Icon, index))
@@ -76,7 +66,8 @@ public sealed class CreateSessionCommandHandler(ISessionRepository sessions, ICa
         var session = RetroSession.Create(
             Guid.NewGuid().ToString(), request.Title, template.Id, theme.Id, squad.Id,
             request.PrivacyMode ?? Domain.Entities.PrivacyMode.Identified, columns, request.SequentialFlow ?? false,
-            request.ActionCardsEnabled ?? true, request.CardBlurEnabled ?? true);
+            request.ActionCardsEnabled ?? true, request.CardBlurEnabled ?? true,
+            requester.Id, requester.IsTest || request.IsTest == true, surveyEnabled: true);
 
         await sessions.SaveAsync(session, ct);
 

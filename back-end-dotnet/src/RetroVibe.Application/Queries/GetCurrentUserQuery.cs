@@ -15,6 +15,6 @@ public sealed class GetCurrentUserQueryHandler(IUserRepository users, ICatalogRe
         if (user is null) return null;
 
         var squad = user.SquadId is null ? null : await catalog.FindSquadByIdAsync(user.SquadId, ct);
-        return new UserDto(user.Id, user.Name, user.Role, squad?.Name, user.AvatarColor, user.AccessLevel);
+        return new UserDto(user.Id, user.Name, user.Role, squad?.Name, user.AvatarColor, user.AccessLevel, user.IsTest);
     }
 }

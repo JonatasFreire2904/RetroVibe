@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using RetroVibe.Application.Commands;
 using RetroVibe.Application.Dtos;
 using RetroVibe.Application.Queries;
+using RetroVibe.Api.Auth;
+using RetroVibe.Domain.Repositories;
 
 namespace RetroVibe.Api.Controllers;
 
@@ -18,7 +20,7 @@ public sealed record UpdateThemeRequest(string? Label, string? Emoji, bool? Acti
 [ApiController]
 [Route("api")]
 [Authorize(Policy = "Staff")]
-public sealed class CatalogController(IMediator mediator) : ControllerBase
+public sealed class CatalogController(IMediator mediator, IUserRepository users) : ControllerBase
 {
     [HttpGet("templates")]
     public async Task<IActionResult> ListTemplates(CancellationToken ct) => Ok(await mediator.Send(new ListTemplatesQuery(), ct));
@@ -68,5 +70,11 @@ public sealed class CatalogController(IMediator mediator) : ControllerBase
     }
 
     [HttpGet("squads")]
-    public async Task<IActionResult> ListSquads(CancellationToken ct) => Ok(await mediator.Send(new ListSquadsQuery(), ct));
+    public async Task<IActionResult> ListSquads(CancellationToken ct)
+    {
+        var all = await mediator.Send(new ListSquadsQuery(), ct);
+        if (User.GetAccessLevel() == RetroVibe.Domain.Entities.AccessLevel.Admin) return Ok(all);
+        var account = await users.FindByIdAsync(User.GetUserId(), ct);
+        return Ok(all.Where(s => account?.CanAccessSquad(s.Id) == true));
+    }
 }

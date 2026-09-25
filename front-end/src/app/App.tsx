@@ -8,6 +8,9 @@ import { SessionBoardPage } from "@/pages/SessionBoardPage";
 import { SessionHistoryPage } from "@/pages/SessionHistoryPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { TeamDashboardPage } from "@/pages/TeamDashboardPage";
+import { SquadsPage } from "@/pages/SquadsPage";
+import { SurveyPage } from "@/pages/SurveyPage";
+import { AdminResearchPage } from "@/pages/AdminResearchPage";
 import { AppLayout } from "./AppLayout";
 import { AppProviders } from "./providers";
 import { RequireAuth } from "./RequireAuth";
@@ -21,6 +24,8 @@ export function App() {
 
           <Route path="/entrar/:sessionId" element={<JoinSessionPage />} />
           <Route path="/participar/:sessionId" element={<ParticipantSessionPage />} />
+          <Route path="/participar/:sessionId/pesquisa" element={<SurveyPage guest />} />
+          <Route path="/pesquisa/:sessionId" element={<RequireAuth><SurveyPage /></RequireAuth>} />
           <Route
             path="/sessoes/:sessionId"
             element={
@@ -41,6 +46,8 @@ export function App() {
             <Route path="/historico" element={<SessionHistoryPage />} />
             <Route path="/itens-de-acao" element={<ActionItemsPage />} />
             <Route path="/dashboard" element={<TeamDashboardPage />} />
+            <Route path="/squads" element={<SquadsPage />} />
+            <Route path="/admin/pesquisa" element={<AdminResearchPage />} />
             <Route path="/configuracoes" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

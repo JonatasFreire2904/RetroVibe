@@ -23,6 +23,10 @@ export function ParticipantSessionPage() {
     </div>;
   }
 
+  if (board.status === "COMPLETED" && board.surveyEnabled) {
+    return <Navigate to={`/participar/${board.id}/pesquisa`} replace />;
+  }
+
   return (
     <RetroBoardView
       board={board}

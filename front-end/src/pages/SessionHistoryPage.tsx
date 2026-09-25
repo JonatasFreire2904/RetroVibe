@@ -46,7 +46,7 @@ export function SessionHistoryPage() {
             className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none placeholder:text-slate-400 focus:border-violet-400"
           />
         </div>
-        {isAdmin && (
+        {(isAdmin || squads.length > 1) && (
           <FilterSelect
             value={squadId}
             onChange={setSquadId}

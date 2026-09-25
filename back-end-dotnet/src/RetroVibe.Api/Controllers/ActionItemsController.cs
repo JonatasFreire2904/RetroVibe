@@ -7,6 +7,7 @@ using RetroVibe.Application.Commands;
 using RetroVibe.Application.Queries;
 using RetroVibe.Domain.Entities;
 using RetroVibe.Domain.Kernel;
+using RetroVibe.Domain.Repositories;
 
 namespace RetroVibe.Api.Controllers;
 
@@ -20,14 +21,15 @@ public sealed record AddActionItemCommentRequest(string Text);
 [ApiController]
 [Route("api/action-items")]
 [Authorize(Policy = "Staff")]
-public sealed class ActionItemsController(IMediator mediator) : ControllerBase
+public sealed class ActionItemsController(IMediator mediator, IUserRepository users) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> ListActionItems(
         [FromQuery] string? sessionId, [FromQuery] string? squadId, [FromQuery] string? templateId,
         [FromQuery] string? themeId, [FromQuery] string? status, CancellationToken ct)
     {
-        var effectiveSquadId = SquadScope.EffectiveSquadId(User, squadId);
+        var account = await users.FindByIdAsync(User.GetUserId(), ct);
+        var effectiveSquadId = SquadScope.EffectiveSquadId(User, account, squadId);
         var statusFilter = EnumQueryParser.Parse<ActionItemStatus>(status);
         var result = await mediator.Send(new ListActionItemsQuery(sessionId, effectiveSquadId, templateId, themeId, statusFilter), ct);
         return Ok(result);
@@ -37,7 +39,8 @@ public sealed class ActionItemsController(IMediator mediator) : ControllerBase
     public async Task<IActionResult> ListSessionsSummary(
         [FromQuery] string? squadId, [FromQuery] string? templateId, [FromQuery] string? themeId, CancellationToken ct)
     {
-        var effectiveSquadId = SquadScope.EffectiveSquadId(User, squadId);
+        var account = await users.FindByIdAsync(User.GetUserId(), ct);
+        var effectiveSquadId = SquadScope.EffectiveSquadId(User, account, squadId);
         var result = await mediator.Send(new ListActionItemSessionsSummaryQuery(effectiveSquadId, templateId, themeId), ct);
         return Ok(result);
     }

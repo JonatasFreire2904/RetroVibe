@@ -14,8 +14,8 @@ public sealed class EfUserRepository(RetroVibeDbContext db) : IUserRepository
         db.Users.FirstOrDefaultAsync(u => u.Username == username, ct);
 
     public async Task<IReadOnlyList<User>> ListBySquadAsync(string squadId, CancellationToken ct = default) =>
-        await db.Users.Where(u => u.SquadId == squadId && u.AccessLevel != AccessLevel.Participant)
-            .OrderBy(u => u.Name).ToListAsync(ct);
+        (await db.Users.Where(u => u.AccessLevel != AccessLevel.Participant)
+            .OrderBy(u => u.Name).ToListAsync(ct)).Where(u => u.CanAccessSquad(squadId)).ToList();
 
     public async Task SaveAsync(User user, CancellationToken ct = default)
     {

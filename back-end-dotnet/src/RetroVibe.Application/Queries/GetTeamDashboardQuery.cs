@@ -5,7 +5,7 @@ using RetroVibe.Domain.Repositories;
 
 namespace RetroVibe.Application.Queries;
 
-public sealed record GetTeamDashboardQuery(string? SquadId) : IRequest<TeamDashboardDto>;
+public sealed record GetTeamDashboardQuery(string? SquadId, bool IncludeTest) : IRequest<TeamDashboardDto>;
 
 public sealed class GetTeamDashboardQueryHandler(ISessionRepository sessions, ICatalogRepository catalog)
     : IRequestHandler<GetTeamDashboardQuery, TeamDashboardDto>
@@ -13,7 +13,8 @@ public sealed class GetTeamDashboardQueryHandler(ISessionRepository sessions, IC
     public async Task<TeamDashboardDto> Handle(GetTeamDashboardQuery request, CancellationToken ct)
     {
         var all = await sessions.FindAllAsync(new SessionListFilters(request.SquadId), ct);
-        var completed = all.Where(s => s.Status == SessionStatus.Completed).ToList();
+        var completed = all.Where(s => s.Status == SessionStatus.Completed && s.SurveyEnabled &&
+            (!s.IsTest || request.IncludeTest)).ToList();
 
         var templates = await catalog.ListAllTemplatesIncludingInactiveAsync(ct);
         var themes = await catalog.ListAllThemesIncludingInactiveAsync(ct);

@@ -29,7 +29,7 @@ public sealed class CreateActionItemCommandHandler(
             return Result<ActionItemDto>.Fail(DomainFailure.Conflict("Cards de ação estão desativados nesta sessão"));
 
         var assignee = request.AssigneeId is null ? null : await users.FindByIdAsync(request.AssigneeId, ct);
-        if (request.AssigneeId is not null && (assignee is null || assignee.SquadId != session.SquadId))
+        if (request.AssigneeId is not null && (assignee is null || !assignee.CanAccessSquad(session.SquadId)))
             return Result<ActionItemDto>.Fail(DomainFailure.Validation("Responsável não pertence ao squad da sessão"));
 
         var created = ActionItem.Create(Guid.NewGuid().ToString(), session.Id, request.Description, request.AssigneeId, request.DueDate);

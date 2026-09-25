@@ -27,25 +27,23 @@ export function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
   const [sequentialFlow, setSequentialFlow] = useState(true);
   const [actionCardsEnabled, setActionCardsEnabled] = useState(true);
   const [cardBlurEnabled, setCardBlurEnabled] = useState(true);
+  const [isTest, setIsTest] = useState(false);
 
   const { data: templates = [] } = useTemplatesQuery();
   const { data: themes = [] } = useThemesQuery();
   const { data: squads = [] } = useSquadsQuery();
   const { data: currentUser } = useCurrentUserQuery();
-  const isAdmin = currentUser?.accessLevel === "ADMIN";
   const createSession = useCreateSessionMutation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isAdmin && currentUser?.squad) {
-      setSquadName(currentUser.squad);
-    }
-  }, [isAdmin, currentUser?.squad]);
+    if (open) setIsTest(Boolean(currentUser?.isTest));
+  }, [open, currentUser?.isTest]);
 
   function reset() {
     setStep(1);
     setTitle("");
-    setSquadName(isAdmin ? "" : currentUser?.squad ?? "");
+    setSquadName("");
     setSquadListOpen(false);
     setSquadSelected(false);
     setTemplateId(null);
@@ -54,6 +52,7 @@ export function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
     setSequentialFlow(true);
     setActionCardsEnabled(true);
     setCardBlurEnabled(true);
+    setIsTest(false);
     createSession.reset();
   }
 
@@ -73,6 +72,7 @@ export function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
       sequentialFlow,
       actionCardsEnabled,
       cardBlurEnabled,
+      isTest,
     });
     reset();
     onClose();
@@ -82,7 +82,7 @@ export function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
   const matchingSquads = squads.filter(squad =>
     squadSelected || squad.name.toLocaleLowerCase("pt-BR").includes(squadName.trim().toLocaleLowerCase("pt-BR")));
   const existingSquad = squads.some(squad => squad.name.toLocaleLowerCase("pt-BR") === squadName.trim().toLocaleLowerCase("pt-BR"));
-  const canAdvance = squadName.trim().length > 0 && Boolean(templateId) && (!isAdmin || squadSelected || existingSquad);
+  const canAdvance = squadSelected && existingSquad && Boolean(templateId);
 
   function selectSquad(name: string) {
     setSquadName(name);
@@ -145,22 +145,21 @@ export function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
               <input
                 value={squadName}
                 onChange={(e) => { setSquadName(e.target.value); setSquadSelected(false); setSquadListOpen(true); }}
-                onFocus={() => isAdmin && setSquadListOpen(true)}
+                onFocus={() => setSquadListOpen(true)}
                 onKeyDown={(e) => { if (e.key === "Escape") setSquadListOpen(false); }}
-                placeholder={isAdmin ? "Selecione ou busque um squad..." : "Nome do squad..."}
-                role={isAdmin ? "combobox" : undefined}
-                aria-expanded={isAdmin ? squadListOpen : undefined}
-                aria-controls={isAdmin ? "squad-options" : undefined}
-                aria-autocomplete={isAdmin ? "list" : undefined}
-                disabled={!isAdmin}
+                placeholder="Selecione ou busque um squad..."
+                role="combobox"
+                aria-expanded={squadListOpen}
+                aria-controls="squad-options"
+                aria-autocomplete="list"
                 className="w-full rounded-xl border border-slate-200 bg-violet-50/40 py-3 pl-10 pr-10 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-violet-400 disabled:cursor-not-allowed disabled:opacity-70"
               />
-              {isAdmin && <button type="button" aria-label="Mostrar squads" aria-expanded={squadListOpen}
+              <button type="button" aria-label="Mostrar squads" aria-expanded={squadListOpen}
                 onClick={() => setSquadListOpen(value => !value)}
                 className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:bg-violet-100">
                 <span className={`text-lg transition-transform ${squadListOpen ? "rotate-180" : ""}`}>⌄</span>
-              </button>}
-              {isAdmin && squadListOpen && <div id="squad-options" role="listbox" aria-label="Squads disponíveis"
+              </button>
+              {squadListOpen && <div id="squad-options" role="listbox" aria-label="Squads disponíveis"
                 className="absolute left-0 right-0 top-full z-20 mt-2 max-h-44 overflow-y-auto rounded-xl border border-violet-200 bg-white p-1.5 shadow-lg">
               {matchingSquads.map(squad => <button key={squad.id} type="button" role="option"
                 aria-selected={squad.name === squadName} onClick={() => selectSquad(squad.name)}
@@ -168,14 +167,9 @@ export function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
                 {squad.name}
               </button>)}
               {matchingSquads.length === 0 && <p className="px-3 py-2 text-sm text-slate-500">Nenhum squad encontrado.</p>}
-              {squadName.trim() && !existingSquad && <button type="button" role="option" aria-selected={false}
-                onClick={() => selectSquad(squadName.trim())}
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-violet-700 hover:bg-violet-50 focus:bg-violet-50 focus:outline-none">
-                Criar novo squad “{squadName.trim()}”
-              </button>}
               </div>}
             </div>
-            {!isAdmin && <p className="mt-1.5 text-xs text-slate-400">Sessões são sempre criadas no seu squad.</p>}
+            {squads.length === 0 && <p className="mt-1.5 text-xs text-slate-500">Você ainda não tem squads. Crie uma na aba Squads.</p>}
           </div>
 
           <div>
@@ -225,6 +219,11 @@ export function CreateSessionModal({ open, onClose }: CreateSessionModalProps) {
             sequentialFlow={sequentialFlow} onSequentialFlowChange={setSequentialFlow}
             actionCardsEnabled={actionCardsEnabled} onActionCardsEnabledChange={setActionCardsEnabled}
             cardBlurEnabled={cardBlurEnabled} onCardBlurEnabledChange={setCardBlurEnabled} />
+          <label className="mt-5 flex items-center gap-3 rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-slate-700">
+            <input type="checkbox" checked={isTest || Boolean(currentUser?.isTest)}
+              disabled={Boolean(currentUser?.isTest)} onChange={event => setIsTest(event.target.checked)} />
+            Sessão de teste (fora dos resultados oficiais da pesquisa)
+          </label>
           {createSession.isError && <p className="mt-3 text-sm text-rose-600">Não foi possível criar a sessão. Tente novamente.</p>}
         </div>
       )}

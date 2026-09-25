@@ -30,6 +30,7 @@ export interface CreateSessionInput {
   sequentialFlow?: boolean;
   actionCardsEnabled?: boolean;
   cardBlurEnabled?: boolean;
+  isTest?: boolean;
 }
 
 export function useCreateSessionMutation() {

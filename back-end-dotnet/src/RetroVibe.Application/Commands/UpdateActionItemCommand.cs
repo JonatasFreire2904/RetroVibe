@@ -51,7 +51,7 @@ public sealed class UpdateActionItemCommandHandler(
             if (assigneeId is not null)
             {
                 var selectedAssignee = await users.FindByIdAsync(assigneeId, ct);
-                if (selectedAssignee is null || selectedAssignee.SquadId != session.SquadId)
+                if (selectedAssignee is null || !selectedAssignee.CanAccessSquad(session.SquadId))
                     return Result<ActionItemDto>.Fail(DomainFailure.Validation("Responsável não pertence ao squad da sessão"));
             }
             var dueDate = request.DueDate.IsSpecified ? request.DueDate.Value : item.DueDate;

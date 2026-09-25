@@ -2,13 +2,15 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useLogout } from "@/modules/auth/api/mutations";
 import { useCurrentUserQuery } from "@/modules/user/api/queries";
 import { Avatar } from "@/shared/ui/Avatar";
-import { CheckSquareIcon, ChartIcon, GearIcon, HistoryIcon, HomeIcon, LogOutIcon } from "@/shared/ui/Icons";
+import { CheckSquareIcon, ChartIcon, GearIcon, HistoryIcon, HomeIcon, LogOutIcon, UsersIcon } from "@/shared/ui/Icons";
 
 const NAV_ITEMS = [
   { to: "/", label: "Home", icon: HomeIcon, end: true, adminOnly: false },
   { to: "/historico", label: "Histórico de Sessões", icon: HistoryIcon, adminOnly: false },
   { to: "/itens-de-acao", label: "Itens de Ação", icon: CheckSquareIcon, adminOnly: false },
   { to: "/dashboard", label: "Dashboard do Time", icon: ChartIcon, adminOnly: false },
+  { to: "/squads", label: "Squads", icon: UsersIcon, adminOnly: false },
+  { to: "/admin/pesquisa", label: "Pesquisa · Admin", icon: ChartIcon, adminOnly: true },
   { to: "/configuracoes", label: "Configurações", icon: GearIcon, adminOnly: false },
 ];
 

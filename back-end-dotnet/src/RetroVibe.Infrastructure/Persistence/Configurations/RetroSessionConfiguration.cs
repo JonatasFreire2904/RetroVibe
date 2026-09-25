@@ -15,6 +15,9 @@ public sealed class RetroSessionConfiguration : IEntityTypeConfiguration<RetroSe
         builder.Property(s => s.TemplateId).HasColumnName("template_id").IsRequired();
         builder.Property(s => s.ThemeId).HasColumnName("theme_id").IsRequired();
         builder.Property(s => s.SquadId).HasColumnName("squad_id").IsRequired();
+        builder.Property(s => s.FacilitatorId).HasColumnName("facilitator_id");
+        builder.Property(s => s.IsTest).HasColumnName("is_test").HasDefaultValue(false);
+        builder.Property(s => s.SurveyEnabled).HasColumnName("survey_enabled").HasDefaultValue(false);
         builder.Property(s => s.Status).HasColumnName("status").HasConversion<string>().IsRequired();
         builder.Property(s => s.Phase).HasColumnName("phase").HasConversion<string>().IsRequired();
         builder.Property(s => s.SequentialFlow).HasColumnName("sequential_flow").HasDefaultValue(false);

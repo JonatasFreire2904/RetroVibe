@@ -7,7 +7,7 @@ using RetroVibe.Domain.Repositories;
 
 namespace RetroVibe.Application.Commands;
 
-public sealed record UpdateUserProfileCommand(string UserId, string Name, string Role, string? SquadName, string AvatarColor)
+public sealed record UpdateUserProfileCommand(string UserId, string Name, string Role, string AvatarColor)
     : IRequest<Result<UserDto>>;
 
 public sealed class UpdateUserProfileCommandValidator : AbstractValidator<UpdateUserProfileCommand>
@@ -27,12 +27,10 @@ public sealed class UpdateUserProfileCommandHandler(IUserRepository users, ICata
         var user = await users.FindByIdAsync(request.UserId, ct);
         if (user is null) return Result<UserDto>.Fail(DomainFailure.NotFound($"User {request.UserId} not found"));
 
-        var squadName = request.SquadName?.Trim();
-        var squad = string.IsNullOrEmpty(squadName) ? null : await catalog.FindOrCreateSquadByNameAsync(squadName, ct);
-
-        user.UpdateProfile(request.Name, request.Role, squad?.Id, request.AvatarColor);
+        user.UpdateProfile(request.Name, request.Role, request.AvatarColor);
         await users.SaveAsync(user, ct);
 
-        return Result<UserDto>.Ok(new UserDto(user.Id, user.Name, user.Role, squad?.Name, user.AvatarColor, user.AccessLevel));
+        var squad = user.SquadId is null ? null : await catalog.FindSquadByIdAsync(user.SquadId, ct);
+        return Result<UserDto>.Ok(new UserDto(user.Id, user.Name, user.Role, squad?.Name, user.AvatarColor, user.AccessLevel, user.IsTest));
     }
 }

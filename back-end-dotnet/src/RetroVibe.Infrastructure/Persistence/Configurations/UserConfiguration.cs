@@ -14,6 +14,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Name).HasColumnName("name").IsRequired();
         builder.Property(u => u.Role).HasColumnName("role").IsRequired();
         builder.Property(u => u.SquadId).HasColumnName("squad_id");
+        builder.PrimitiveCollection(u => u.ManagedSquadIds).HasColumnName("managed_squad_ids");
+        builder.Property(u => u.IsTest).HasColumnName("is_test").HasDefaultValue(false);
+        builder.Property(u => u.TokenVersion).HasColumnName("token_version").HasDefaultValue(0);
         builder.Property(u => u.AvatarColor).HasColumnName("avatar_color").IsRequired();
         builder.Property(u => u.Username).HasColumnName("username");
         builder.Property(u => u.PasswordHash).HasColumnName("password_hash");

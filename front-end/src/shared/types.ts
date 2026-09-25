@@ -74,6 +74,8 @@ export interface SessionBoard {
   actionCardsEnabled: boolean;
   cardBlurEnabled: boolean;
   cardsRevealed: boolean;
+  surveyEnabled: boolean;
+  isTest: boolean;
   template: Template;
   theme: Theme;
   squad: { id: string; name: string };
@@ -138,6 +140,7 @@ export interface CurrentUser {
   squad: string | null;
   avatarColor: string;
   accessLevel: AccessLevel;
+  isTest: boolean;
 }
 
 export interface Comment {

@@ -16,6 +16,7 @@ public sealed class RetroVibeDbContext : DbContext
     public DbSet<RetroSession> Sessions => Set<RetroSession>();
     public DbSet<ActionItem> ActionItems => Set<ActionItem>();
     public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<SurveyResponseRow> SurveyResponses => Set<SurveyResponseRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -18,6 +18,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),
             new(AuthClaimTypes.AccessLevel, user.AccessLevel.ToString()),
+            new(AuthClaimTypes.TokenVersion, user.TokenVersion.ToString()),
         };
         if (user.SquadId is not null) claims.Add(new Claim(AuthClaimTypes.SquadId, user.SquadId));
         if (user.AllowedSessionId is not null) claims.Add(new Claim(AuthClaimTypes.AllowedSessionId, user.AllowedSessionId));
@@ -29,7 +30,8 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
             issuer: _options.Issuer,
             audience: _options.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(_options.ExpiryHours),
+            expires: user.AccessLevel == AccessLevel.Participant
+                ? DateTime.UtcNow.AddDays(7) : DateTime.UtcNow.AddHours(_options.ExpiryHours),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

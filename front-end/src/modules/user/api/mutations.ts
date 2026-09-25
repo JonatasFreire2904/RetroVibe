@@ -6,7 +6,6 @@ import { userKeys } from "./queries";
 export interface UpdateProfileInput {
   name: string;
   role: string;
-  squadName: string | null;
   avatarColor: string;
 }
 

@@ -11,7 +11,7 @@ namespace RetroVibe.Api.Controllers;
 
 public sealed record JoinSessionRequest(string DisplayName);
 public sealed record CreateSessionRequest(string? Title, string TemplateId, string? ThemeId, string SquadName,
-    PrivacyMode? PrivacyMode, bool? SequentialFlow, bool? ActionCardsEnabled, bool? CardBlurEnabled);
+    PrivacyMode? PrivacyMode, bool? SequentialFlow, bool? ActionCardsEnabled, bool? CardBlurEnabled, bool? IsTest);
 public sealed record UpdateSessionRequest(string? Title, PrivacyMode PrivacyMode, bool SequentialFlow, bool ActionCardsEnabled,
     bool? CardBlurEnabled);
 public sealed record NavigateStageRequest(SessionPhase Phase, int ActiveColumnIndex);
@@ -40,7 +40,8 @@ public sealed class SessionsController(IMediator mediator, ISessionRepository se
         [FromQuery] string? squadId, [FromQuery] string? templateId, [FromQuery] string? themeId, [FromQuery] string? search,
         CancellationToken ct)
     {
-        var effectiveSquadId = SquadScope.EffectiveSquadId(User, squadId);
+        var account = await users.FindByIdAsync(User.GetUserId(), ct);
+        var effectiveSquadId = SquadScope.EffectiveSquadId(User, account, squadId);
         var result = await mediator.Send(new ListSessionsQuery(effectiveSquadId, templateId, themeId, search), ct);
         return Ok(result);
     }
@@ -51,7 +52,8 @@ public sealed class SessionsController(IMediator mediator, ISessionRepository se
     {
         var result = await mediator.Send(
             new CreateSessionCommand(request.Title, request.TemplateId, request.ThemeId, request.SquadName,
-                request.PrivacyMode, request.SequentialFlow, request.ActionCardsEnabled, request.CardBlurEnabled, User.GetUserId()), ct);
+                request.PrivacyMode, request.SequentialFlow, request.ActionCardsEnabled, request.CardBlurEnabled,
+                request.IsTest, User.GetUserId()), ct);
         return result.ToActionResult(StatusCodes.Status201Created);
     }
 
@@ -119,7 +121,7 @@ public sealed class SessionsController(IMediator mediator, ISessionRepository se
         var board = await mediator.Send(new GetSessionBoardQuery(id, userId), ct);
         if (board is null) return NotFound(new { error = "NOT_FOUND", message = $"Session {id} not found" });
 
-        if (!IsAllowedOnSession(board.Squad.Id, board.Id))
+        if (!await IsAllowedOnSession(board.Squad.Id, board.Id, ct))
         {
             return StatusCode(StatusCodes.Status403Forbidden, new { error = "FORBIDDEN", message = "Você não tem acesso a esta sessão" });
         }
@@ -133,7 +135,7 @@ public sealed class SessionsController(IMediator mediator, ISessionRepository se
     {
         var session = await sessions.FindByIdAsync(id, ct);
         if (session is null) return NotFound();
-        if (!IsAllowedOnSession(session.SquadId, id)) return Forbid();
+        if (!await IsAllowedOnSession(session.SquadId, id, ct)) return Forbid();
         var members = await users.ListBySquadAsync(session.SquadId, ct);
         return Ok(members.Select(member => new { member.Id, member.Name, member.AvatarColor }));
     }
@@ -143,7 +145,7 @@ public sealed class SessionsController(IMediator mediator, ISessionRepository se
     {
         var session = await sessions.FindByIdAsync(id, ct);
         if (session is null) return NotFound();
-        if (!IsAllowedOnSession(session.SquadId, id)) return Forbid();
+        if (!await IsAllowedOnSession(session.SquadId, id, ct)) return Forbid();
         var items = await mediator.Send(new ListActionItemsQuery(id, null, null, null, null), ct);
         return Ok(items);
     }
@@ -182,7 +184,7 @@ public sealed class SessionsController(IMediator mediator, ISessionRepository se
         var board = await mediator.Send(new GetSessionBoardQuery(id, User.GetUserId()), ct);
         if (board is null) return NotFound(new { error = "NOT_FOUND", message = $"Session {id} not found" });
 
-        if (!IsAllowedOnSession(board.Squad.Id, board.Id))
+        if (!await IsAllowedOnSession(board.Squad.Id, board.Id, ct))
         {
             return StatusCode(StatusCodes.Status403Forbidden, new { error = "FORBIDDEN", message = "Você não tem acesso a esta sessão" });
         }
@@ -191,11 +193,12 @@ public sealed class SessionsController(IMediator mediator, ISessionRepository se
         return Ok(comments ?? []);
     }
 
-    private bool IsAllowedOnSession(string boardSquadId, string boardSessionId)
+    private async Task<bool> IsAllowedOnSession(string boardSquadId, string boardSessionId, CancellationToken ct)
     {
         var accessLevel = User.GetAccessLevel();
         return accessLevel == AccessLevel.Admin
-            || (accessLevel == AccessLevel.Facilitator && boardSquadId == User.GetSquadId())
+            || (accessLevel == AccessLevel.Facilitator &&
+                (await users.FindByIdAsync(User.GetUserId(), ct))?.CanAccessSquad(boardSquadId) == true)
             || (accessLevel == AccessLevel.Participant && User.GetAllowedSessionId() == boardSessionId);
     }
 }

@@ -79,7 +79,7 @@ export function ActionItemsPage() {
         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
           <p className="mb-3 text-xs font-bold uppercase tracking-wide text-slate-400">Filtrar sessões</p>
           <div className="space-y-2">
-            {isAdmin && (
+            {(isAdmin || squads.length > 1) && (
               <FilterSelect value={squadId} onChange={setSquadId} allLabel="Squad" options={squads.map((s) => ({ value: s.id, label: s.name }))} />
             )}
             <FilterSelect value={templateId} onChange={setTemplateId} allLabel="Modelo" options={templates.map((t) => ({ value: t.id, label: t.label }))} />

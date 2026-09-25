@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Security.Claims;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -87,6 +88,17 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30),
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var userId = context.Principal?.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
+                var tokenVersion = context.Principal?.FindFirstValue(AuthClaimTypes.TokenVersion);
+                var users = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+                var account = userId is null ? null : await users.FindByIdAsync(userId, context.HttpContext.RequestAborted);
+                if (account is null || tokenVersion != account.TokenVersion.ToString()) context.Fail("Token revoked");
+            }
         };
     });
 

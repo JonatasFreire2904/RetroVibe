@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using RetroVibe.Application.Commands;
 using RetroVibe.Application.Dtos;
 
@@ -222,9 +223,151 @@ public sealed class ApiTests : IDisposable
     public async Task ForcesFacilitatorToCreateSessionsOnlyInOwnSquad()
     {
         var token = await LoginAsync("joao");
-        var board = await CreateSessionAsync(token, squadName: "Phoenix");
+        var response = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/sessions", token,
+            new { templateId = "4ls", squadName = "Phoenix" }));
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
 
-        Assert.Equal("Cosmos", board.Squad.Name);
+    [Fact]
+    public async Task AdminCreatesFacilitatorAndResetsPasswordWithoutExposingIt()
+    {
+        var admin = await LoginAsync("marcos");
+        var existingFacilitator = await LoginAsync("joao");
+        var denied = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/admin/facilitators", existingFacilitator,
+            new { name = "Intruso", username = "intruso", password = "supersecret123", isTest = false }));
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+
+        var created = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/admin/facilitators", admin,
+            new { name = "Luana", username = "luana", password = "initial-secret-123", isTest = true }));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var facilitator = (await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+        Assert.DoesNotContain("password", (await created.Content.ReadAsStringAsync()).ToLowerInvariant());
+        var previousToken = await LoginAsync("luana", "initial-secret-123");
+
+        var reset = await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/admin/facilitators/{facilitator}/password", admin,
+            new { password = "replacement-secret-456" }));
+        Assert.Equal(HttpStatusCode.NoContent, reset.StatusCode);
+        var oldPassword = await _client.PostAsJsonAsync("/api/auth/login", new { username = "luana", password = "initial-secret-123" });
+        Assert.Equal(HttpStatusCode.BadRequest, oldPassword.StatusCode);
+        var oldSession = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/me", previousToken));
+        Assert.Equal(HttpStatusCode.Unauthorized, oldSession.StatusCode);
+        await LoginAsync("luana", "replacement-secret-456");
+    }
+
+    [Fact]
+    public async Task TestFacilitatorSeesOwnSurveyAndSessionDashboard()
+    {
+        var admin = await LoginAsync("marcos");
+        var created = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/admin/facilitators", admin,
+            new { name = "Facilitadora de teste", username = "teste_dashboard", password = "dashboard-secret-123", isTest = true }));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var facilitator = await LoginAsync("teste_dashboard", "dashboard-secret-123");
+        var squad = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/squads", facilitator,
+            new { name = "Squad de pesquisa" }));
+        Assert.Equal(HttpStatusCode.Created, squad.StatusCode);
+        var session = await CreateSessionAsync(facilitator, "Squad de pesquisa", "4ls");
+        Assert.True(session.IsTest);
+        var joined = await _client.PostAsJsonAsync($"/api/sessions/{session.Id}/join", new { displayName = "Convidado" });
+        joined.EnsureSuccessStatusCode();
+        var guest = (await joined.Content.ReadFromJsonAsync<JoinSessionResultDto>(JsonHelper.Options))!;
+        (await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{session.Id}/close", facilitator, new { })))
+            .EnsureSuccessStatusCode();
+        var answer = new { engagementScore = 5, usabilityScore = 4, suggestion = "Boa experiência" };
+        (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{session.Id}/survey", facilitator, answer)))
+            .EnsureSuccessStatusCode();
+        (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{session.Id}/survey", guest.Token, answer)))
+            .EnsureSuccessStatusCode();
+
+        var research = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/overview?mode=all", facilitator));
+        research.EnsureSuccessStatusCode();
+        var stats = await research.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, stats.GetProperty("sessions").GetInt32());
+        Assert.Equal(2, stats.GetProperty("receivedResponses").GetInt32());
+        var dashboard = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/dashboard", facilitator));
+        dashboard.EnsureSuccessStatusCode();
+        var dashboardStats = await dashboard.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, dashboardStats.GetProperty("sessionsInPeriod").GetInt32());
+        var adminDashboard = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/dashboard", admin));
+        adminDashboard.EnsureSuccessStatusCode();
+        var adminStats = await adminDashboard.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(0, adminStats.GetProperty("sessionsInPeriod").GetInt32());
+    }
+
+    [Fact]
+    public async Task FacilitatorCanCreateSeveralSquadsButCannotClaimAnotherThroughProfile()
+    {
+        var token = await LoginAsync("joao");
+        foreach (var name in new[] { "Passarinho", "Dragão" })
+        {
+            var created = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/squads", token, new { name }));
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        }
+        var own = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/sessions", token,
+            new { templateId = "4ls", squadName = "Passarinho" }));
+        Assert.Equal(HttpStatusCode.Created, own.StatusCode);
+
+        var profile = await _client.SendAsync(Authorized(HttpMethod.Patch, "/api/me", token,
+            new { name = "João", role = "Facilitador", squadName = "Phoenix", avatarColor = "#22C55E" }));
+        profile.EnsureSuccessStatusCode();
+        var stolen = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/sessions", token,
+            new { templateId = "4ls", squadName = "Phoenix" }));
+        Assert.Equal(HttpStatusCode.Forbidden, stolen.StatusCode);
+    }
+
+    [Fact]
+    public async Task SurveyRequiresCompletionRejectsDuplicatesAndSeparatesTestSessions()
+    {
+        var admin = await LoginAsync("marcos");
+        var real = await CreateSessionAsync(admin);
+        var testCreate = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/sessions", admin,
+            new { templateId = "4ls", squadName = "Phoenix", isTest = true }));
+        testCreate.EnsureSuccessStatusCode();
+        var test = (await testCreate.Content.ReadFromJsonAsync<SessionBoardDto>(JsonHelper.Options))!;
+        Assert.True(test.IsTest);
+
+        var joined = await _client.PostAsJsonAsync($"/api/sessions/{real.Id}/join", new { displayName = "Convidada" });
+        joined.EnsureSuccessStatusCode();
+        var guest = (await joined.Content.ReadFromJsonAsync<JoinSessionResultDto>(JsonHelper.Options))!;
+        var card = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/cards", guest.Token,
+            new { columnId = real.Columns[0].Id, text = "Aprendizado da equipe" }));
+        Assert.Equal(HttpStatusCode.Created, card.StatusCode);
+        var answer = new { engagementScore = 4, usabilityScore = 5, suggestion = "Tema alegre" };
+        var early = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token, answer));
+        Assert.Equal(HttpStatusCode.Conflict, early.StatusCode);
+
+        (await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{real.Id}/close", admin, new { }))).EnsureSuccessStatusCode();
+        (await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{test.Id}/close", admin, new { }))).EnsureSuccessStatusCode();
+        var invalid = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token,
+            new { engagementScore = 0, usabilityScore = 5, suggestion = "" }));
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        var guestAnswer = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token, answer));
+        Assert.Equal(HttpStatusCode.Created, guestAnswer.StatusCode);
+        var duplicate = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token, answer));
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+        var facilitatorAnswer = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", admin,
+            new { engagementScore = 3, usabilityScore = 4, suggestion = "" }));
+        Assert.Equal(HttpStatusCode.Created, facilitatorAnswer.StatusCode);
+
+        var realOverview = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/overview", admin));
+        realOverview.EnsureSuccessStatusCode();
+        var realStats = await realOverview.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, realStats.GetProperty("sessions").GetInt32());
+        Assert.Equal(2, realStats.GetProperty("receivedResponses").GetInt32());
+        Assert.Equal(1, realStats.GetProperty("cards").GetInt32());
+        var testOverview = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/overview?mode=test", admin));
+        var testStats = await testOverview.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, testStats.GetProperty("sessions").GetInt32());
+        Assert.Equal(0, testStats.GetProperty("receivedResponses").GetInt32());
+
+        var detail = await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/research/sessions/{real.Id}", admin));
+        detail.EnsureSuccessStatusCode();
+        var data = await detail.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(2, data.GetProperty("responses").GetArrayLength());
+        Assert.Equal(2, data.GetProperty("metrics").GetProperty("participants").GetInt32());
+        Assert.Equal(1, data.GetProperty("metrics").GetProperty("cards").GetInt32());
+        var otherFacilitator = await LoginAsync("joao");
+        var denied = await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/research/sessions/{real.Id}", otherFacilitator));
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
     }
 
     [Fact]

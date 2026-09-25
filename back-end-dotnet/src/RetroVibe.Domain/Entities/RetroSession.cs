@@ -38,6 +38,9 @@ public sealed class RetroSession
     public string TemplateId { get; private set; } = null!;
     public string ThemeId { get; private set; } = null!;
     public string SquadId { get; private set; } = null!;
+    public string? FacilitatorId { get; private set; }
+    public bool IsTest { get; private set; }
+    public bool SurveyEnabled { get; private set; }
     public SessionStatus Status { get; private set; }
     public SessionPhase Phase { get; private set; }
     public bool SequentialFlow { get; private set; }
@@ -65,7 +68,7 @@ public sealed class RetroSession
     public static RetroSession Create(
         string id, string? title, string templateId, string themeId, string squadId,
         PrivacyMode privacyMode, IEnumerable<RetroColumn> columns, bool sequentialFlow = false, bool actionCardsEnabled = true,
-        bool cardBlurEnabled = true)
+        bool cardBlurEnabled = true, string? facilitatorId = null, bool isTest = false, bool surveyEnabled = false)
     {
         var session = new RetroSession
         {
@@ -74,6 +77,9 @@ public sealed class RetroSession
             TemplateId = templateId,
             ThemeId = themeId,
             SquadId = squadId,
+            FacilitatorId = facilitatorId,
+            IsTest = isTest,
+            SurveyEnabled = surveyEnabled,
             Status = SessionStatus.Active,
             Phase = SessionPhase.Collecting,
             SequentialFlow = sequentialFlow,
@@ -100,7 +106,8 @@ public sealed class RetroSession
         double? feedbackScore, PhaseDurations? phaseDurations, IEnumerable<RetroColumn> columns,
         bool sequentialFlow = false, int activeColumnIndex = 0, bool actionCardsEnabled = true,
         DateTime? stageStartedAt = null, int collectSeconds = 0, int voteSeconds = 0, int discussSeconds = 0,
-        bool cardBlurEnabled = false, bool cardsRevealed = false)
+        bool cardBlurEnabled = false, bool cardsRevealed = false,
+        string? facilitatorId = null, bool isTest = false, bool surveyEnabled = false)
     {
         var session = new RetroSession
         {
@@ -109,6 +116,9 @@ public sealed class RetroSession
             TemplateId = templateId,
             ThemeId = themeId,
             SquadId = squadId,
+            FacilitatorId = facilitatorId,
+            IsTest = isTest,
+            SurveyEnabled = surveyEnabled,
             Status = status,
             Phase = phase,
             SequentialFlow = sequentialFlow,

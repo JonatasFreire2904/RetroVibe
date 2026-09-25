@@ -13,19 +13,17 @@ export function ProfileForm() {
 
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
-  const [squadName, setSquadName] = useState("");
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
 
   useEffect(() => {
     if (!user) return;
     setName(user.name);
     setRole(user.role);
-    setSquadName(user.squad ?? "");
     setAvatarColor(user.avatarColor);
   }, [user]);
 
   function handleSubmit() {
-    updateProfile.mutate({ name, role, squadName: squadName.trim() || null, avatarColor });
+    updateProfile.mutate({ name, role, avatarColor });
   }
 
   return (
@@ -57,7 +55,6 @@ export function ProfileForm() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Nome" value={name} onChange={setName} />
           <Field label="Cargo" value={role} onChange={setRole} />
-          <Field label="Squad" value={squadName} onChange={setSquadName} />
         </div>
 
         <Button className="mt-6" icon={<CheckIcon width={16} height={16} />} onClick={handleSubmit} disabled={updateProfile.isPending}>
