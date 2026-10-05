@@ -48,10 +48,11 @@ public sealed class UpdateActionItemCommandHandler(
         if (request.AssigneeId.IsSpecified || request.DueDate.IsSpecified)
         {
             var assigneeId = request.AssigneeId.IsSpecified ? request.AssigneeId.Value : item.AssigneeId;
-            if (assigneeId is not null)
+            // Só valida quando o responsável muda: um membro removido do squad continua no item até ser trocado.
+            if (assigneeId is not null && assigneeId != item.AssigneeId)
             {
                 var selectedAssignee = await users.FindByIdAsync(assigneeId, ct);
-                if (selectedAssignee is null || !selectedAssignee.CanAccessSquad(session.SquadId))
+                if (selectedAssignee is null || !selectedAssignee.CanBeAssignedInSquad(session.SquadId))
                     return Result<ActionItemDto>.Fail(DomainFailure.Validation("Responsável não pertence ao squad da sessão"));
             }
             var dueDate = request.DueDate.IsSpecified ? request.DueDate.Value : item.DueDate;

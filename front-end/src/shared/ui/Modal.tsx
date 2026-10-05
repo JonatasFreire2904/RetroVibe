@@ -9,9 +9,10 @@ interface ModalProps {
   subtitle?: string;
   children: ReactNode;
   footer?: ReactNode;
+  size?: "sm" | "md";
 }
 
-export function Modal({ open, onClose, title, subtitle, children, footer }: ModalProps) {
+export function Modal({ open, onClose, title, subtitle, children, footer, size = "md" }: ModalProps) {
   useEffect(() => {
     if (!open) return;
     function handleKeyDown(event: KeyboardEvent) {
@@ -26,7 +27,7 @@ export function Modal({ open, onClose, title, subtitle, children, footer }: Moda
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <button aria-label="Fechar" className="absolute inset-0" onClick={onClose} />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+      <div className={`relative z-10 max-h-[90vh] w-full ${size === "sm" ? "max-w-md" : "max-w-xl"} overflow-y-auto rounded-2xl bg-white shadow-xl`}>
         <div className="h-1 w-full bg-brand-gradient" />
         <div className="flex items-start justify-between px-6 py-5">
           <div>

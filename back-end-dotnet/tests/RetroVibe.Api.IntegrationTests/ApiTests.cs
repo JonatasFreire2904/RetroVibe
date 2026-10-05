@@ -220,6 +220,54 @@ public sealed class ApiTests : IDisposable
     }
 
     [Fact]
+    public async Task SquadMembersWithoutAccountCanBeAssignedToActionItems()
+    {
+        var token = await LoginAsync("joao");
+        var squadResponse = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/squads", token,
+            new { name = "Time Alfa", members = new[] { "Luana", "Carla", "luana", " " } }));
+        Assert.Equal(HttpStatusCode.Created, squadResponse.StatusCode);
+        var squad = await squadResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var squadId = squad.GetProperty("id").GetString()!;
+        Assert.Equal(2, squad.GetProperty("members").GetArrayLength());
+
+        var otherSquad = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/squads/phoenix/members", token, new { name = "Intruso" }));
+        Assert.Equal(HttpStatusCode.Forbidden, otherSquad.StatusCode);
+        var duplicate = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/squads/{squadId}/members", token, new { name = "carla" }));
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+        var added = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/squads/{squadId}/members", token, new { name = "Bruno" }));
+        Assert.Equal(HttpStatusCode.Created, added.StatusCode);
+
+        var board = await CreateSessionAsync(token, "Time Alfa");
+        var assignees = await (await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/sessions/{board.Id}/assignees", token)))
+            .Content.ReadFromJsonAsync<List<ActionItemAssigneeDto>>(JsonHelper.Options);
+        Assert.Equal(new[] { "Bruno", "Carla", "João", "Luana" }, assignees!.Select(a => a.Name).OrderBy(n => n));
+        var luana = assignees.Single(a => a.Name == "Luana");
+
+        var createdResponse = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/action-items", token,
+            new { sessionId = board.Id, description = "Revisar pipeline", assigneeId = luana.Id }));
+        createdResponse.EnsureSuccessStatusCode();
+        var created = (await createdResponse.Content.ReadFromJsonAsync<ActionItemDto>(JsonHelper.Options))!;
+        Assert.Equal("Luana", created.Assignee?.Name);
+        var listed = await (await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/action-items?sessionId={board.Id}", token)))
+            .Content.ReadFromJsonAsync<List<ActionItemDto>>(JsonHelper.Options);
+        Assert.Contains(listed!, item => item.Id == created.Id);
+
+        var removed = await _client.SendAsync(Authorized(HttpMethod.Delete, $"/api/squads/{squadId}/members/{luana.Id}", token));
+        Assert.Equal(HttpStatusCode.NoContent, removed.StatusCode);
+        var remaining = await (await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/sessions/{board.Id}/assignees", token)))
+            .Content.ReadFromJsonAsync<List<ActionItemAssigneeDto>>(JsonHelper.Options);
+        Assert.DoesNotContain(remaining!, a => a.Id == luana.Id);
+
+        var rescheduled = await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/action-items/{created.Id}", token,
+            new { dueDate = DateTime.UtcNow.AddDays(7) }));
+        rescheduled.EnsureSuccessStatusCode();
+        Assert.Equal("Luana", (await rescheduled.Content.ReadFromJsonAsync<ActionItemDto>(JsonHelper.Options))!.Assignee?.Name);
+        var reassigned = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/action-items", token,
+            new { sessionId = board.Id, description = "Outra ação", assigneeId = luana.Id }));
+        Assert.Equal(HttpStatusCode.BadRequest, reassigned.StatusCode);
+    }
+
+    [Fact]
     public async Task ForcesFacilitatorToCreateSessionsOnlyInOwnSquad()
     {
         var token = await LoginAsync("joao");

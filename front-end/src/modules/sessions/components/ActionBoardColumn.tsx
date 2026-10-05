@@ -78,6 +78,7 @@ function ActionBoardCard({ item, assignees, canEdit }: {
 export function ActionBoardColumn({ sessionId, theme, palette, items, assignees, isFacilitator, isActive,
   isClosing = false, onClose }: Props) {
   const [draft, setDraft] = useState("");
+  const [draftAssigneeId, setDraftAssigneeId] = useState("");
   const createActionItem = useCreateActionItemMutation();
   const style = {
     "--retro-column-bg": palette.background,
@@ -102,10 +103,16 @@ export function ActionBoardColumn({ sessionId, theme, palette, items, assignees,
         event.preventDefault();
         const description = draft.trim();
         if (!description) return;
-        createActionItem.mutate({ sessionId, description }, { onSuccess: () => setDraft("") });
+        createActionItem.mutate({ sessionId, description, assigneeId: draftAssigneeId || undefined },
+          { onSuccess: () => { setDraft(""); setDraftAssigneeId(""); } });
       }}>
         <textarea value={draft} onChange={event => setDraft(event.target.value)} maxLength={280} rows={3}
           placeholder="Qual compromisso o time vai assumir?" aria-label="Novo item de ação" />
+        <select value={draftAssigneeId} onChange={event => setDraftAssigneeId(event.target.value)}
+          aria-label="Responsável pelo novo item de ação">
+          <option value="">Sem responsável</option>
+          {assignees.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+        </select>
         <button type="submit" disabled={!draft.trim() || createActionItem.isPending}>＋ Adicionar ação</button>
         {createActionItem.isError && <p role="alert">Não foi possível criar o item de ação.</p>}
       </form>}

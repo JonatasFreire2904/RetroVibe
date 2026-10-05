@@ -184,6 +184,11 @@
   padding: 9px; background: white; color: #31323b; outline: none; font-size: 12px;
 }
 .retro-action-compose textarea:focus, .retro-action-edit textarea:focus { border-color: var(--retro-column-accent); }
+.retro-action-compose select {
+  width: 100%; min-width: 0; border: 1px solid var(--retro-column-border); border-radius: 8px;
+  padding: 6px 7px; background: white; color: #565968; font-size: 11px; outline: none;
+}
+.retro-action-compose select:focus { border-color: var(--retro-column-accent); }
 .retro-action-compose button, .retro-action-edit button:first-child {
   border-radius: 9px; padding: 8px; background: var(--retro-column-accent); color: white; font-size: 11px; font-weight: 800;
 }

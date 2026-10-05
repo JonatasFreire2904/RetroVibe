@@ -31,8 +31,9 @@ O sistema tem **3 papéis de acesso** (`accessLevel`), alinhados ao RF001 do doc
 - Um FACILITATOR que cria uma sessão sempre a cria no **próprio squad** — o squad informado na
   requisição é ignorado nesse caso (a UI já trava esse campo, mas a regra vale mesmo sem a UI).
   PARTICIPANT nunca pode criar sessão.
-- Nem todo registro de usuário tem login: perfis usados apenas como responsáveis de itens de ação
-  (assignees) podem existir sem `username`/senha, e nesse caso não conseguem autenticar.
+- Nem todo registro de usuário tem login: **membros de squad** (`accessLevel = MEMBER`) são cadastrados
+  só com um nome, sem `username`/senha, e servem apenas como responsáveis de itens de ação. Não
+  conseguem autenticar e, mesmo no domínio, não têm acesso a nenhum squad ou sessão (ver seção 6).
 
 ## 2. Sessão de retrospectiva (`RetroSession`)
 
@@ -85,6 +86,10 @@ O sistema tem **3 papéis de acesso** (`accessLevel`), alinhados ao RF001 do doc
   qualquer mudança a qualquer momento).
 - Responsável (`assignee`) e prazo (`dueDate`) são opcionais e podem ser alterados a qualquer momento,
   independentemente do status.
+- O responsável precisa ser do squad da sessão: um membro cadastrado no squad, um FACILITATOR que
+  gerencia o squad ou um ADMIN cujo squad próprio seja esse (o ADMIN enxerga todos os squads, mas não
+  aparece como responsável nos times dos outros). Participantes convidados da retro não aparecem como opção, porque são contas
+  temporárias presas a uma sessão.
 - Um item de ação está sempre vinculado a uma sessão; não existem itens de ação "soltos".
 
 ## 5. Perfil de usuário
@@ -106,8 +111,11 @@ O sistema tem **3 papéis de acesso** (`accessLevel`), alinhados ao RF001 do doc
   seção 2), então inativar um template depois não afeta nem o histórico nem sessões em andamento —
   a imutabilidade do histórico é uma consequência direta desse design, não uma regra extra.
 - Só ADMIN acessa essas rotas (`/admin/templates`, `/admin/themes`); FACILITATOR recebe `403`.
-- **Squads** são criados sob demanda: tanto ao criar uma sessão quanto ao editar o perfil, se o nome
-  informado não existir ainda, ele é criado automaticamente.
+- **Squads** são criados pelo FACILITATOR na tela de Squads, que pode já informar os **membros** do
+  time. Membros também podem ser adicionados ou removidos depois (por ADMIN ou por um FACILITATOR do
+  squad); nomes repetidos no mesmo squad são recusados.
+- Remover um membro só o tira do squad: ele deixa de aparecer na lista de responsáveis, mas os itens
+  de ação já atribuídos a ele continuam mostrando seu nome até alguém trocar o responsável.
 
 ## 7. Dashboard do Time
 

@@ -28,6 +28,12 @@ export interface Squad {
   name: string;
 }
 
+export interface SquadMember {
+  id: string;
+  name: string;
+  avatarColor: string;
+}
+
 export type SessionStatus = "ACTIVE" | "PAUSED" | "COMPLETED";
 export type SessionPhase = "COLLECTING" | "VOTING" | "DISCUSSING";
 export type PrivacyMode = "ANONYMOUS" | "IDENTIFIED";

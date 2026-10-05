@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSquadsQuery, useTemplatesQuery, useThemesQuery } from "@/modules/catalog/api/queries";
 import { useCreateActionItemMutation } from "@/modules/action-items/api/mutations";
 import { useActionItemSessionsSummaryQuery, useActionItemsQuery } from "@/modules/action-items/api/queries";
@@ -26,6 +26,8 @@ export function ActionItemsPage() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [statusTab, setStatusTab] = useState<ActionItemStatus | "ALL">("ALL");
   const [draft, setDraft] = useState("");
+  const [draftAssigneeId, setDraftAssigneeId] = useState("");
+  const draftInputRef = useRef<HTMLInputElement>(null);
 
   const { data: currentUser } = useCurrentUserQuery();
   const isAdmin = currentUser?.accessLevel === "ADMIN";
@@ -57,6 +59,10 @@ export function ActionItemsPage() {
   const { data: items = [] } = useActionItemsQuery({ sessionId: selectedSessionId ?? undefined });
   const createItem = useCreateActionItemMutation();
 
+  useEffect(() => {
+    setDraftAssigneeId("");
+  }, [selectedSessionId]);
+
   const counts = STATUS_TABS.reduce<Record<string, number>>((acc, tab) => {
     acc[tab.value] = tab.value === "ALL" ? items.length : items.filter((i) => i.status === tab.value).length;
     return acc;
@@ -68,9 +74,15 @@ export function ActionItemsPage() {
     const description = draft.trim();
     if (!description || !selectedSessionId) return;
     createItem.mutate(
-      { sessionId: selectedSessionId, description },
-      { onSuccess: () => setDraft("") }
+      { sessionId: selectedSessionId, description, assigneeId: draftAssigneeId || undefined },
+      { onSuccess: () => { setDraft(""); setDraftAssigneeId(""); } }
     );
+  }
+
+  function startNewItem() {
+    setStatusTab("ALL");
+    draftInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    draftInputRef.current?.focus();
   }
 
   return (
@@ -113,7 +125,7 @@ export function ActionItemsPage() {
                 <p className="text-xs text-slate-400">Squad {board.squad.name}</p>
               </div>
             </div>
-            <Button size="sm" disabled={!board.actionCardsEnabled} icon={<PlusIcon width={14} height={14} />} onClick={() => document.getElementById("new-item-input")?.focus()}>
+            <Button size="sm" disabled={!board.actionCardsEnabled} icon={<PlusIcon width={14} height={14} />} onClick={startNewItem}>
               Novo item
             </Button>
           </div>
@@ -136,18 +148,31 @@ export function ActionItemsPage() {
         </div>
 
         {selectedSessionId && board?.actionCardsEnabled && (
-          <div className="mb-4 flex items-center gap-2 rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
-            <input
-              id="new-item-input"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-              placeholder="Descreva o item de ação..."
-              className="flex-1 rounded-lg border-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-slate-400"
-            />
-            <Button size="sm" disabled={!draft.trim() || createItem.isPending} onClick={handleAddItem}>
-              Adicionar
-            </Button>
+          <div className="mb-4">
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-white p-3 shadow-sm transition focus-within:border-violet-300 focus-within:ring-2 focus-within:ring-violet-100">
+              <input
+                ref={draftInputRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                maxLength={280}
+                placeholder="Descreva o item de ação..."
+                className="min-w-48 flex-1 rounded-lg border-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-slate-400"
+              />
+              <select
+                aria-label="Responsável pelo novo item"
+                value={draftAssigneeId}
+                onChange={(e) => setDraftAssigneeId(e.target.value)}
+                className="max-w-[180px] rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-600 outline-none focus:border-violet-400"
+              >
+                <option value="">Sem responsável</option>
+                {assignees.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+              </select>
+              <Button size="sm" disabled={!draft.trim() || createItem.isPending} onClick={handleAddItem}>
+                Adicionar
+              </Button>
+            </div>
+            {createItem.isError && <p className="mt-2 text-xs text-rose-600">Não foi possível criar o item de ação.</p>}
           </div>
         )}
 
