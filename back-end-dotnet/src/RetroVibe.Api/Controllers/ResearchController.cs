@@ -29,6 +29,7 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
             .GroupBy(u => u.AllowedSessionId).Select(g => new { SessionId = g.Key, Count = g.Count() }).ToListAsync(ct);
         var actionItems = await db.ActionItems.CountAsync(a => ids.Contains(a.SessionId), ct);
         var expected = sessions.Count + guestCounts.Sum(g => g.Count);
+        var facilitatorResponses = responses.Where(r => r.RespondentRole == "FACILITATOR").ToList();
         return Ok(new
         {
             sessions = sessions.Count, expectedResponses = expected, receivedResponses = responses.Count,
@@ -40,6 +41,8 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
             actionItems,
             facilitator = SummarizeRole(responses, "FACILITATOR"),
             participants = SummarizeRole(responses, "PARTICIPANT"),
+            teamMoreEngaged = SummarizeYesNo(facilitatorResponses.Select(r => r.TeamMoreEngaged)),
+            customThemeUse = SummarizeYesNo(facilitatorResponses.Select(r => r.UsedCustomTheme)),
             scoreDistribution = Enumerable.Range(1, 5).Select(score => new
             {
                 score, engagement = responses.Count(r => r.EngagementScore == score),
@@ -126,7 +129,8 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
             respondents = isAdmin ? respondents : null,
             responses = isAdmin ? responses.Select((r, index) => new
             {
-                number = index + 1, r.RespondentRole, r.EngagementScore, r.UsabilityScore,
+                number = index + 1, r.RespondentRole, r.TeamMoreEngaged, r.UsedCustomTheme,
+                r.EngagementScore, r.UsabilityScore,
                 r.Suggestion
             }).ToList() : null
         });
@@ -145,5 +149,13 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
         var responses = all.Where(r => r.RespondentRole == role).ToList();
         return new { count = responses.Count, engagementAverage = Average(responses.Select(r => r.EngagementScore)),
             usabilityAverage = Average(responses.Select(r => r.UsabilityScore)) };
+    }
+
+    private static object SummarizeYesNo(IEnumerable<bool?> answers)
+    {
+        var values = answers.Where(answer => answer.HasValue).Select(answer => answer!.Value).ToList();
+        var yes = values.Count(answer => answer);
+        return new { answered = values.Count, yes, no = values.Count - yes,
+            percentYes = values.Count == 0 ? 0 : Math.Round(100.0 * yes / values.Count, 1) };
     }
 }

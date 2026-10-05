@@ -349,9 +349,17 @@ namespace RetroVibe.Infrastructure.Persistence.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("suggestion");
 
+                    b.Property<bool?>("TeamMoreEngaged")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("team_more_engaged");
+
                     b.Property<int>("UsabilityScore")
                         .HasColumnType("INTEGER")
                         .HasColumnName("usability_score");
+
+                    b.Property<bool?>("UsedCustomTheme")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("used_custom_theme");
 
                     b.HasKey("Id");
 

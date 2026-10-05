@@ -146,6 +146,21 @@ próprio autor que aquele card é dele (permite editar mesmo anônimo, sem expor
 
 Calculado apenas sobre sessões `COMPLETED`.
 
+## Questionário pós-retrospectiva
+
+| Rota | Método | Body | Retorno |
+|---|---|---|---|
+| `/sessions/:id/survey` | GET | — | `{ enabled, open, completed, role }` para o facilitador da sessão ou um convidado dela |
+| `/sessions/:id/survey` | POST | `{ teamMoreEngaged?, usedCustomTheme?, engagementScore, usabilityScore, suggestion }` | `{ completed: true }` (201) |
+| `/research/overview` | GET | query: `mode?, squadId?` | Respostas agregadas, incluindo `teamMoreEngaged` e `customThemeUse` com `{ answered, yes, no, percentYes }` |
+
+O questionário abre após o encerramento da sessão. Todas as perguntas preenchidas pelo usuário são
+obrigatórias: notas de 1 a 5 e sugestão não vazia (é possível responder `Nenhuma`). O facilitador
+também responde às duas perguntas Sim/Não; convidados não enviam esses campos. `QP3` é apurado
+automaticamente a partir dos dados da sessão. As duas colunas novas são anuláveis no banco para
+preservar questionários anteriores à atualização e não entram no denominador dos percentuais.
+O dashboard do facilitador mostra respostas de convidados sem identificar seus autores.
+
 ## Perfil (usuário autenticado) — ADMIN/FACILITATOR
 
 | Rota | Método | Body | Retorno |

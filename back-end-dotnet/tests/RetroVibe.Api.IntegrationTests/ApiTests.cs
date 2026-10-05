@@ -320,10 +320,12 @@ public sealed class ApiTests : IDisposable
         var guest = (await joined.Content.ReadFromJsonAsync<JoinSessionResultDto>(JsonHelper.Options))!;
         (await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{session.Id}/close", facilitator, new { })))
             .EnsureSuccessStatusCode();
-        var answer = new { engagementScore = 5, usabilityScore = 4, suggestion = "Boa experiência" };
-        (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{session.Id}/survey", facilitator, answer)))
+        var facilitatorAnswer = new { teamMoreEngaged = true, usedCustomTheme = false,
+            engagementScore = 5, usabilityScore = 4, suggestion = "Boa experiência" };
+        var guestAnswer = new { engagementScore = 4, usabilityScore = 4, suggestion = "Boa experiência" };
+        (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{session.Id}/survey", facilitator, facilitatorAnswer)))
             .EnsureSuccessStatusCode();
-        (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{session.Id}/survey", guest.Token, answer)))
+        (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{session.Id}/survey", guest.Token, guestAnswer)))
             .EnsureSuccessStatusCode();
 
         var research = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/overview?mode=all", facilitator));
@@ -331,6 +333,8 @@ public sealed class ApiTests : IDisposable
         var stats = await research.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(1, stats.GetProperty("sessions").GetInt32());
         Assert.Equal(2, stats.GetProperty("receivedResponses").GetInt32());
+        Assert.Equal(1, stats.GetProperty("teamMoreEngaged").GetProperty("yes").GetInt32());
+        Assert.Equal(1, stats.GetProperty("customThemeUse").GetProperty("no").GetInt32());
         var dashboard = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/dashboard", facilitator));
         dashboard.EnsureSuccessStatusCode();
         var dashboardStats = await dashboard.Content.ReadFromJsonAsync<JsonElement>();
@@ -388,12 +392,22 @@ public sealed class ApiTests : IDisposable
         var invalid = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token,
             new { engagementScore = 0, usabilityScore = 5, suggestion = "" }));
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        var missingSuggestion = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token,
+            new { engagementScore = 4, usabilityScore = 5, suggestion = " " }));
+        Assert.Equal(HttpStatusCode.BadRequest, missingSuggestion.StatusCode);
+        var facilitatorMissingAnswers = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", admin,
+            new { engagementScore = 3, usabilityScore = 4, suggestion = "Nenhuma" }));
+        Assert.Equal(HttpStatusCode.BadRequest, facilitatorMissingAnswers.StatusCode);
+        var guestClaimingFacilitatorAnswers = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token,
+            new { teamMoreEngaged = true, usedCustomTheme = true, engagementScore = 4, usabilityScore = 5, suggestion = "Tema alegre" }));
+        Assert.Equal(HttpStatusCode.BadRequest, guestClaimingFacilitatorAnswers.StatusCode);
         var guestAnswer = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token, answer));
         Assert.Equal(HttpStatusCode.Created, guestAnswer.StatusCode);
         var duplicate = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token, answer));
         Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
         var facilitatorAnswer = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", admin,
-            new { engagementScore = 3, usabilityScore = 4, suggestion = "" }));
+            new { teamMoreEngaged = false, usedCustomTheme = true,
+                engagementScore = 3, usabilityScore = 4, suggestion = "Nenhuma" }));
         Assert.Equal(HttpStatusCode.Created, facilitatorAnswer.StatusCode);
 
         var realOverview = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/overview", admin));
@@ -402,6 +416,8 @@ public sealed class ApiTests : IDisposable
         Assert.Equal(1, realStats.GetProperty("sessions").GetInt32());
         Assert.Equal(2, realStats.GetProperty("receivedResponses").GetInt32());
         Assert.Equal(1, realStats.GetProperty("cards").GetInt32());
+        Assert.Equal(1, realStats.GetProperty("teamMoreEngaged").GetProperty("no").GetInt32());
+        Assert.Equal(1, realStats.GetProperty("customThemeUse").GetProperty("yes").GetInt32());
         var testOverview = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/overview?mode=test", admin));
         var testStats = await testOverview.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(1, testStats.GetProperty("sessions").GetInt32());
@@ -411,6 +427,13 @@ public sealed class ApiTests : IDisposable
         detail.EnsureSuccessStatusCode();
         var data = await detail.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(2, data.GetProperty("responses").GetArrayLength());
+        var facilitatorResponse = data.GetProperty("responses").EnumerateArray()
+            .Single(response => response.GetProperty("respondentRole").GetString() == "FACILITATOR");
+        Assert.False(facilitatorResponse.GetProperty("teamMoreEngaged").GetBoolean());
+        Assert.True(facilitatorResponse.GetProperty("usedCustomTheme").GetBoolean());
+        var guestResponse = data.GetProperty("responses").EnumerateArray()
+            .Single(response => response.GetProperty("respondentRole").GetString() == "PARTICIPANT");
+        Assert.Equal(JsonValueKind.Null, guestResponse.GetProperty("teamMoreEngaged").ValueKind);
         Assert.Equal(2, data.GetProperty("metrics").GetProperty("participants").GetInt32());
         Assert.Equal(1, data.GetProperty("metrics").GetProperty("cards").GetInt32());
         var otherFacilitator = await LoginAsync("joao");

@@ -8,7 +8,8 @@ using RetroVibe.Infrastructure.Persistence.Rows;
 
 namespace RetroVibe.Api.Controllers;
 
-public sealed record SubmitSurveyRequest(int EngagementScore, int UsabilityScore, string? Suggestion);
+public sealed record SubmitSurveyRequest(bool? TeamMoreEngaged, bool? UsedCustomTheme,
+    int EngagementScore, int UsabilityScore, string? Suggestion);
 
 [ApiController]
 [Route("api/sessions/{sessionId}/survey")]
@@ -37,15 +38,18 @@ public sealed class SurveyController(RetroVibeDbContext db) : ControllerBase
         if (!session.SurveyEnabled || session.Status != SessionStatus.Completed)
             return Conflict(new { error = "SURVEY_NOT_OPEN", message = "O questionário abre após o encerramento da sessão" });
         if (request.EngagementScore is < 1 or > 5 || request.UsabilityScore is < 1 or > 5 ||
-            request.Suggestion?.Length > 2000)
-            return BadRequest(new { error = "VALIDATION", message = "As notas devem estar entre 1 e 5; a sugestão deve ter até 2000 caracteres" });
+            string.IsNullOrWhiteSpace(request.Suggestion) || request.Suggestion.Length > 2000 ||
+            (role == "FACILITATOR" && (request.TeamMoreEngaged is null || request.UsedCustomTheme is null)) ||
+            (role == "PARTICIPANT" && (request.TeamMoreEngaged is not null || request.UsedCustomTheme is not null)))
+            return BadRequest(new { error = "VALIDATION", message = "Responda todas as perguntas; as notas devem estar entre 1 e 5 e a sugestão deve ter até 2000 caracteres" });
         if (await db.SurveyResponses.AnyAsync(r => r.SessionId == sessionId && r.RespondentId == User.GetUserId(), ct))
             return Conflict(new { error = "ALREADY_SUBMITTED", message = "Você já respondeu este questionário" });
 
         var response = new SurveyResponseRow
         {
             Id = Guid.NewGuid().ToString(), SessionId = sessionId, RespondentId = User.GetUserId(),
-            RespondentRole = role, EngagementScore = request.EngagementScore, UsabilityScore = request.UsabilityScore,
+            RespondentRole = role, TeamMoreEngaged = request.TeamMoreEngaged, UsedCustomTheme = request.UsedCustomTheme,
+            EngagementScore = request.EngagementScore, UsabilityScore = request.UsabilityScore,
             Suggestion = request.Suggestion?.Trim() ?? "", SubmittedAt = DateTime.UtcNow
         };
         db.SurveyResponses.Add(response);

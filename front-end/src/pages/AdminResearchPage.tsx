@@ -9,9 +9,11 @@ interface Facilitator { id: string; name: string; username: string; isTest: bool
 interface Overview { sessions: number; expectedResponses: number; receivedResponses: number; completionPercent: number;
   engagementAverage: number; usabilityAverage: number; cards: number; votes: number; actionItems: number;
   facilitator: RoleStats; participants: RoleStats;
+  teamMoreEngaged: YesNoStats; customThemeUse: YesNoStats;
   scoreDistribution: { score: number; engagement: number; usability: number }[];
   suggestions: { respondentRole: string; suggestion: string }[] }
 interface RoleStats { count: number; engagementAverage: number; usabilityAverage: number }
+interface YesNoStats { answered: number; yes: number; no: number; percentYes: number }
 interface FacilitatorSquads { facilitator: { id: string; name: string; isTest: boolean };
   squads: (Squad & { sessions: number })[] }
 interface ResearchSession { id: string; title: string | null; status: string; createdAt: string;
@@ -21,7 +23,8 @@ interface SessionDetail { id: string; title: string | null; isTest: boolean; squ
   engagementAverage: number; usabilityAverage: number;
   metrics: { participants: number; cards: number; votes: number; actionItems: number; durationMinutes: number };
   respondents: { name: string; role: string; completed: boolean }[];
-  responses: { number: number; respondentRole: string; engagementScore: number; usabilityScore: number;
+  responses: { number: number; respondentRole: string; teamMoreEngaged: boolean | null; usedCustomTheme: boolean | null;
+    engagementScore: number; usabilityScore: number;
     suggestion: string }[] }
 
 export function AdminResearchPage() {
@@ -79,6 +82,10 @@ export function AdminResearchPage() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2"><RoleCard title="Facilitadores" stats={overview.data.facilitator} />
         <RoleCard title="Convidados" stats={overview.data.participants} /></div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <YesNoCard title="Equipe mais engajada com o RetroVibe" stats={overview.data.teamMoreEngaged} />
+        <YesNoCard title="Uso de tema personalizado" stats={overview.data.customThemeUse} />
+      </div>
       <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <h2 className="font-bold text-slate-800">Distribuição das notas</h2>
         <div className="mt-3 grid grid-cols-5 gap-2 text-center text-xs">{overview.data.scoreDistribution.map(row => <div key={row.score} className="rounded-xl bg-violet-50 p-3">
@@ -157,7 +164,8 @@ export function AdminResearchPage() {
       <h3 className="mt-6 font-bold text-slate-800">Respostas individuais</h3>
       <div className="mt-3 grid gap-3 md:grid-cols-2">{detail.data.responses?.map(r => <article key={r.number} className="rounded-xl border border-slate-200 p-4 text-sm">
         <p className="font-bold text-violet-700">Questionário #{r.number} · {r.respondentRole === "FACILITATOR" ? "Facilitador" : "Convidado"}</p>
-        <p className="mt-2">Engajamento: {r.engagementScore}/5 · Usabilidade: {r.usabilityScore}/5</p>
+        {r.respondentRole === "FACILITATOR" && <p className="mt-2">Equipe mais engajada: {yesNo(r.teamMoreEngaged)} · Tema personalizado: {yesNo(r.usedCustomTheme)}</p>}
+        <p className="mt-2">{r.respondentRole === "FACILITATOR" ? "Engajamento do time" : "Engajamento pessoal"}: {r.engagementScore}/5 · Usabilidade: {r.usabilityScore}/5</p>
         <p className="mt-2 text-slate-600">{r.suggestion || "Sem sugestão de melhoria."}</p></article>)}</div>
     </section>}
   </div>;
@@ -171,3 +179,9 @@ function RoleCard({ title, stats }: { title: string; stats: RoleStats }) {
   return <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><h3 className="font-bold text-slate-800">{title} · {stats.count} respostas</h3>
     <p className="mt-3 text-sm text-slate-600">Engajamento {stats.engagementAverage}/5 · Usabilidade {stats.usabilityAverage}/5</p></div>;
 }
+function YesNoCard({ title, stats }: { title: string; stats: YesNoStats }) {
+  return <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><h3 className="font-bold text-slate-800">{title}</h3>
+    <p className="mt-3 text-sm text-slate-600">{stats.yes} Sim · {stats.no} Não · {stats.answered} respostas</p>
+    {stats.answered > 0 && <p className="mt-1 text-xs text-slate-500">{stats.percentYes}% responderam Sim</p>}</div>;
+}
+function yesNo(value: boolean | null) { return value === null ? "Não coletado" : value ? "Sim" : "Não"; }

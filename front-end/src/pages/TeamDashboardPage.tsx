@@ -20,6 +20,10 @@ export function TeamDashboardPage() {
   const { data: research } = useQuery({ queryKey: ["research", "overview", researchMode, squadId],
     queryFn: () => httpClient.get<{ sessions: number; expectedResponses: number; receivedResponses: number;
       completionPercent: number; engagementAverage: number; usabilityAverage: number; cards: number;
+      facilitator: { count: number; engagementAverage: number; usabilityAverage: number };
+      participants: { count: number; engagementAverage: number; usabilityAverage: number };
+      teamMoreEngaged: { answered: number; yes: number; no: number; percentYes: number };
+      customThemeUse: { answered: number; yes: number; no: number; percentYes: number };
       suggestions: { respondentRole: string; suggestion: string }[] }>(
         "/research/overview", { mode: researchMode, squadId: squadId || undefined }), enabled: Boolean(currentUser) });
   const phaseTotal = dashboard ? dashboard.phaseAverages.collectMinutes + dashboard.phaseAverages.voteMinutes + dashboard.phaseAverages.discussMinutes : 0;
@@ -56,10 +60,12 @@ export function TeamDashboardPage() {
         <>
           {research && <div className="mb-6 rounded-2xl border border-violet-100 bg-violet-50/70 p-5">
             <h2 className="font-bold text-slate-800">Resultados da pesquisa</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard icon={<StarIcon />} value={`${research.engagementAverage}/5`} label="Engajamento" />
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <StatCard icon={<StarIcon />} value={`${research.facilitator.engagementAverage}/5`} label="Engajamento do time · facilitadores" />
+              <StatCard icon={<StarIcon />} value={`${research.participants.engagementAverage}/5`} label="Engajamento pessoal · convidados" />
               <StatCard icon={<StarIcon />} value={`${research.usabilityAverage}/5`} label="Usabilidade" />
-              <StatCard icon={<StarIcon />} value={String(research.cards)} label="Cards criados" />
+              <StatCard icon={<UsersIcon />} value={`${research.teamMoreEngaged.yes}/${research.teamMoreEngaged.answered}`} label="Equipe mais engajada · Sim" />
+              <StatCard icon={<StarIcon />} value={`${research.customThemeUse.yes}/${research.customThemeUse.answered}`} label="Tema personalizado · Sim" />
               <StatCard icon={<UsersIcon />} value={`${research.receivedResponses}/${research.expectedResponses}`} label="Questionários respondidos" />
             </div>
             {research.suggestions.length > 0 && <div className="mt-4 border-t border-violet-100 pt-4">
@@ -70,7 +76,7 @@ export function TeamDashboardPage() {
           </div>}
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard icon={<UsersIcon />} value={String(dashboard.averageParticipants)} label="Média de participantes" />
-            <StatCard icon={<StarIcon />} value={`${research?.engagementAverage ?? 0}/5`} label="Engajamento nas respostas" />
+            <StatCard icon={<StarIcon />} value={`${research?.participants.engagementAverage ?? 0}/5`} label="Engajamento dos convidados" />
             <StatCard icon={<ClockIcon />} value={`${dashboard.averageDurationMinutes} min`} label="Duração média" />
             <StatCard icon={<CalendarIcon />} value={String(dashboard.sessionsInPeriod)} label="Sessões no período" />
           </div>
