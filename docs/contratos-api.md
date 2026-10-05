@@ -57,6 +57,19 @@ se a sessão estiver `ACTIVE` (`409` caso contrário).
 `Template`: `{ id, key, label, icon, description, isCustom, active, columns: [{key,label,icon}] }`
 `Theme`: `{ id, key, label, emoji, active }`
 
+### Squads e membros
+
+| Rota | Método | Papel | Body | Retorno |
+|---|---|---|---|---|
+| `/squads` | POST | FACILITATOR | `{ name, members?: string[] }` | `{ id, name, members: SquadMember[] }` (201); `409` se o nome já existir |
+| `/squads/:id/members` | GET | ADMIN/FACILITATOR do squad | — | `SquadMember[]` |
+| `/squads/:id/members` | POST | ADMIN/FACILITATOR do squad | `{ name }` | `SquadMember` (201); `409` se já houver membro com o mesmo nome |
+| `/squads/:id/members/:memberId` | DELETE | ADMIN/FACILITATOR do squad | — | `204`; o membro sai da lista de responsáveis, itens já atribuídos mantêm o nome |
+
+`SquadMember`: `{ id, name, avatarColor }`. Membros **não têm conta** (sem usuário/senha, `accessLevel = MEMBER`)
+e não acessam a plataforma; existem só para serem escolhidos como responsáveis em itens de ação
+(`GET /sessions/:id/assignees` devolve os membros do squad da sessão junto com os facilitadores).
+
 ### Gestão de catálogo (RF002/RF020) — só ADMIN
 
 | Rota | Método | Body | Retorno |
@@ -107,7 +120,7 @@ próprio autor que aquele card é dele (permite editar mesmo anônimo, sem expor
 |---|---|---|---|
 | `/action-items` | GET | query: `sessionId?, squadId?, templateId?, themeId?, status?` | `ActionItem[]` |
 | `/action-items/sessions-summary` | GET | query: `squadId?, templateId?, themeId?` | `ActionItemSessionSummary[]` (para a barra lateral) |
-| `/action-items` | POST | `{ sessionId, description, assigneeId?, dueDate? }` | `ActionItem` (201), status inicial `PLANNED`; `403` se a sessão não for do seu squad |
+| `/action-items` | POST | `{ sessionId, description, assigneeId?, dueDate? }` | `ActionItem` (201), status inicial `PLANNED`; `403` se a sessão não for do seu squad; `400` se o responsável não for do squad da sessão |
 | `/action-items/:id` | PATCH | `{ status?, description?, assigneeId?, dueDate? }` | `ActionItem`; `403` se o item pertencer a uma sessão de outro squad |
 
 `status` ∈ `PLANNED \| BACKLOG \| IN_PROGRESS \| DONE \| DISCARDED`

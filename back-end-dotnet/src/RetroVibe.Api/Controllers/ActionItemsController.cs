@@ -21,7 +21,7 @@ public sealed record AddActionItemCommentRequest(string Text);
 [ApiController]
 [Route("api/action-items")]
 [Authorize(Policy = "Staff")]
-public sealed class ActionItemsController(IMediator mediator, IUserRepository users) : ControllerBase
+public sealed class ActionItemsController(IMediator mediator, IUserRepository users, ISessionRepository sessions) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> ListActionItems(
@@ -29,6 +29,9 @@ public sealed class ActionItemsController(IMediator mediator, IUserRepository us
         [FromQuery] string? themeId, [FromQuery] string? status, CancellationToken ct)
     {
         var account = await users.FindByIdAsync(User.GetUserId(), ct);
+        // Sem squad explícito, usa o squad da própria sessão (o facilitador pode gerenciar vários squads).
+        if (sessionId is not null && squadId is null)
+            squadId = (await sessions.FindByIdAsync(sessionId, ct))?.SquadId;
         var effectiveSquadId = SquadScope.EffectiveSquadId(User, account, squadId);
         var statusFilter = EnumQueryParser.Parse<ActionItemStatus>(status);
         var result = await mediator.Send(new ListActionItemsQuery(sessionId, effectiveSquadId, templateId, themeId, statusFilter), ct);

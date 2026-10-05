@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { httpClient } from "@/shared/lib/httpClient";
-import type { Squad, Template, Theme } from "@/shared/types";
+import type { Squad, SquadMember, Template, Theme } from "@/shared/types";
 
 export const catalogKeys = {
   templates: ["catalog", "templates"] as const,
   themes: ["catalog", "themes"] as const,
   squads: ["catalog", "squads"] as const,
+  squadMembers: (squadId: string) => ["catalog", "squads", squadId, "members"] as const,
 };
 
 export function useTemplatesQuery() {
@@ -29,5 +30,12 @@ export function useSquadsQuery() {
     queryKey: catalogKeys.squads,
     queryFn: () => httpClient.get<Squad[]>("/squads"),
     staleTime: 60 * 1000,
+  });
+}
+
+export function useSquadMembersQuery(squadId: string) {
+  return useQuery({
+    queryKey: catalogKeys.squadMembers(squadId),
+    queryFn: () => httpClient.get<SquadMember[]>(`/squads/${squadId}/members`),
   });
 }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   useAddCardMutation, useAdvancePhaseMutation, useCloseSessionMutation, useEditCardMutation,
@@ -8,6 +9,7 @@ import {
 import { useSessionBoardQuery } from "@/modules/sessions/api/queries";
 import { RetroBoardView } from "@/modules/sessions/components/RetroBoardView";
 import { ApiError } from "@/shared/lib/httpClient";
+import { ConfirmDialog } from "@/shared/ui/ConfirmDialog";
 
 export function SessionBoardPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -23,6 +25,7 @@ export function SessionBoardPage() {
   const navigateStage = useNavigateStageMutation(sessionId ?? "");
   const updateSettings = useUpdateSessionSettingsMutation(sessionId ?? "");
   const revealCards = useRevealSessionCardsMutation(sessionId ?? "");
+  const [confirmingClose, setConfirmingClose] = useState(false);
 
   if (isError) {
     const message = error instanceof ApiError && error.status === 403
@@ -38,33 +41,47 @@ export function SessionBoardPage() {
     return <div className="flex min-h-screen items-center justify-center bg-violet-50 text-sm text-slate-500">Carregando sessão…</div>;
   }
 
-  async function handleClose() {
-    if (!window.confirm("Encerrar esta sessão? Ela ficará somente para leitura.")) return;
-    await closeSession.mutateAsync(undefined);
-    navigate(board?.surveyEnabled ? `/pesquisa/${sessionId}` : "/", { replace: true });
+  function handleClose() {
+    closeSession.mutate(undefined, {
+      onSuccess: () => navigate(board?.surveyEnabled ? `/pesquisa/${sessionId}` : "/", { replace: true }),
+    });
   }
 
   return (
-    <RetroBoardView
-      board={board}
-      isFacilitator
-      isAddingCard={addCard.isPending}
-      isAdvancing={advancePhase.isPending}
-      isPausing={pauseSession.isPending}
-      isResuming={resumeSession.isPending}
-      isClosing={closeSession.isPending}
-      isUpdatingSettings={updateSettings.isPending}
-      isRevealingCards={revealCards.isPending}
-      onAddCard={async (columnId, text) => { await addCard.mutateAsync({ columnId, text }); }}
-      onEditCard={(cardId, text) => editCard.mutate({ cardId, text })}
-      onVote={(cardId) => toggleVote.mutate(cardId)}
-      onAdvance={() => advancePhase.mutate()}
-      onNavigateStage={(phase, activeColumnIndex) => navigateStage.mutate({ phase, activeColumnIndex })}
-      onUpdateSettings={(settings) => updateSettings.mutateAsync(settings)}
-      onRevealCards={() => revealCards.mutate()}
-      onPause={() => pauseSession.mutate()}
-      onResume={() => resumeSession.mutate()}
-      onClose={() => void handleClose()}
-    />
+    <>
+      <ConfirmDialog
+        open={confirmingClose}
+        title="Encerrar sessão"
+        message="Depois de encerrada, a sessão fica somente para leitura e ninguém poderá adicionar cards ou votos."
+        confirmLabel="Encerrar sessão"
+        pendingLabel="Encerrando…"
+        tone="danger"
+        isPending={closeSession.isPending}
+        error={closeSession.isError ? "Não foi possível encerrar a sessão. Tente novamente." : null}
+        onConfirm={handleClose}
+        onCancel={() => { closeSession.reset(); setConfirmingClose(false); }}
+      />
+      <RetroBoardView
+        board={board}
+        isFacilitator
+        isAddingCard={addCard.isPending}
+        isAdvancing={advancePhase.isPending}
+        isPausing={pauseSession.isPending}
+        isResuming={resumeSession.isPending}
+        isClosing={closeSession.isPending}
+        isUpdatingSettings={updateSettings.isPending}
+        isRevealingCards={revealCards.isPending}
+        onAddCard={async (columnId, text) => { await addCard.mutateAsync({ columnId, text }); }}
+        onEditCard={(cardId, text) => editCard.mutate({ cardId, text })}
+        onVote={(cardId) => toggleVote.mutate(cardId)}
+        onAdvance={() => advancePhase.mutate()}
+        onNavigateStage={(phase, activeColumnIndex) => navigateStage.mutate({ phase, activeColumnIndex })}
+        onUpdateSettings={(settings) => updateSettings.mutateAsync(settings)}
+        onRevealCards={() => revealCards.mutate()}
+        onPause={() => pauseSession.mutate()}
+        onResume={() => resumeSession.mutate()}
+        onClose={() => setConfirmingClose(true)}
+      />
+    </>
   );
 }

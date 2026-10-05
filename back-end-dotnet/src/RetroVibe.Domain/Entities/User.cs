@@ -7,6 +7,7 @@ public enum AccessLevel
     [JsonStringEnumMemberName("ADMIN")] Admin,
     [JsonStringEnumMemberName("FACILITATOR")] Facilitator,
     [JsonStringEnumMemberName("PARTICIPANT")] Participant,
+    [JsonStringEnumMemberName("MEMBER")] Member,
 }
 
 public sealed class User
@@ -56,15 +57,22 @@ public sealed class User
         };
     }
 
+    public static User CreateSquadMember(string id, string name, string squadId, string avatarColor) =>
+        Restore(id, name, "Membro", squadId, avatarColor, username: null, passwordHash: null, AccessLevel.Member, allowedSessionId: null);
+
     public bool IsAdmin => AccessLevel == AccessLevel.Admin;
     public bool IsParticipant => AccessLevel == AccessLevel.Participant;
+    public bool IsSquadMember => AccessLevel == AccessLevel.Member;
 
     public bool CanAccessSquad(string squadId)
     {
         if (IsAdmin) return true;
-        if (IsParticipant) return false;
+        if (IsParticipant || IsSquadMember) return false;
         return SquadId == squadId || ManagedSquadIds.Contains(squadId);
     }
+
+    public bool CanBeAssignedInSquad(string squadId) =>
+        IsSquadMember || IsAdmin ? SquadId == squadId : CanAccessSquad(squadId);
 
     public bool CanAccessSession(string sessionId)
     {
@@ -92,4 +100,6 @@ public sealed class User
     }
 
     public void SetTest(bool isTest) => IsTest = isTest;
+
+    public void LeaveSquad() => SquadId = null;
 }
