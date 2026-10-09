@@ -317,9 +317,23 @@ namespace RetroVibe.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RetroVibe.Infrastructure.Persistence.Rows.SurveyResponseRow", b =>
                 {
+                    b.Property<string>("CustomThemeName")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("custom_theme_name");
+
                     b.Property<string>("Id")
                         .HasColumnType("TEXT")
                         .HasColumnName("id");
+
+                    b.Property<int>("QuestionnaireVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1)
+                        .HasColumnName("questionnaire_version");
+
+                    b.Property<string>("RatingsJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ratings_json");
 
                     b.Property<int>("EngagementScore")
                         .HasColumnType("INTEGER")

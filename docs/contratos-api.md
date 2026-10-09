@@ -150,16 +150,21 @@ Calculado apenas sobre sessões `COMPLETED`.
 
 | Rota | Método | Body | Retorno |
 |---|---|---|---|
-| `/sessions/:id/survey` | GET | — | `{ enabled, open, completed, role }` para o facilitador da sessão ou um convidado dela |
-| `/sessions/:id/survey` | POST | `{ teamMoreEngaged?, usedCustomTheme?, engagementScore, usabilityScore, suggestion }` | `{ completed: true }` (201) |
-| `/research/overview` | GET | query: `mode?, squadId?` | Respostas agregadas, incluindo `teamMoreEngaged` e `customThemeUse` com `{ answered, yes, no, percentYes }` |
+| `/sessions/:id/survey` | GET | — | `{ enabled, open, completed, role, sessionDate, questionnaireVersion: 2 }` para o facilitador da sessão ou um convidado dela |
+| `/sessions/:id/survey` | POST | `{ usedCustomTheme, customThemeName?, ratings: number[], suggestion }` | `{ completed: true }` (201) |
+| `/research/overview` | GET | query: `mode?, squadId?` | `questionnaire` com SUS, UES-SF, itens da equipe, médias por afirmação e uso de tema; respostas anteriores permanecem nos campos legados |
 
-O questionário abre após o encerramento da sessão. Todas as perguntas preenchidas pelo usuário são
-obrigatórias: notas de 1 a 5 e sugestão não vazia (é possível responder `Nenhuma`). O facilitador
-também responde às duas perguntas Sim/Não; convidados não enviam esses campos. `QP3` é apurado
-automaticamente a partir dos dados da sessão. As duas colunas novas são anuláveis no banco para
-preservar questionários anteriores à atualização e não entram no denominador dos percentuais.
-O dashboard do facilitador mostra respostas de convidados sem identificar seus autores.
+O questionário abre após o encerramento da sessão. Todos respondem Sim/Não sobre o tema, as 19
+afirmações de SUS e UES-SF (notas inteiras de 1 a 5) e a sugestão aberta, que permanece obrigatória;
+é possível escrever `Nenhuma`. O facilitador responde também às afirmações 20 a 24 sobre a equipe e,
+se marcou `usedCustomTheme: true`, informa `customThemeName`. Assim, `ratings` deve conter exatamente
+19 valores para convidados ou 24 para facilitadores, na ordem do questionário. A data vem da sessão.
+
+SUS usa a pontuação padrão de 0 a 100: para as afirmações ímpares, subtrai-se 1 da nota; para as
+pares, subtrai-se a nota de 5; a soma é multiplicada por 2,5. UES-SF é a média das afirmações 11 a 19
+(1 a 5). A percepção da equipe é a média das afirmações 20 a 24 do facilitador. As respostas antigas
+continuam disponíveis, mas não entram nessas novas médias. Os dados de atividade são apurados pelo
+software. O dashboard do facilitador mostra respostas dos convidados sem identificar os autores.
 
 ## Perfil (usuário autenticado) — ADMIN/FACILITATOR
 

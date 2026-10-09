@@ -14,8 +14,11 @@ public sealed class SurveyResponseConfiguration : IEntityTypeConfiguration<Surve
         builder.Property(r => r.SessionId).HasColumnName("session_id").IsRequired();
         builder.Property(r => r.RespondentId).HasColumnName("respondent_id").IsRequired();
         builder.Property(r => r.RespondentRole).HasColumnName("respondent_role").IsRequired();
+        builder.Property(r => r.QuestionnaireVersion).HasColumnName("questionnaire_version").HasDefaultValue(1);
+        builder.Property(r => r.RatingsJson).HasColumnName("ratings_json");
         builder.Property(r => r.TeamMoreEngaged).HasColumnName("team_more_engaged");
         builder.Property(r => r.UsedCustomTheme).HasColumnName("used_custom_theme");
+        builder.Property(r => r.CustomThemeName).HasColumnName("custom_theme_name");
         builder.Property(r => r.EngagementScore).HasColumnName("engagement_score");
         builder.Property(r => r.UsabilityScore).HasColumnName("usability_score");
         builder.Property(r => r.Suggestion).HasColumnName("suggestion").IsRequired();

@@ -2,8 +2,11 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using RetroVibe.Application.Commands;
 using RetroVibe.Application.Dtos;
+using RetroVibe.Infrastructure.Persistence;
+using RetroVibe.Infrastructure.Persistence.Rows;
 
 namespace RetroVibe.Api.IntegrationTests;
 
@@ -44,6 +47,9 @@ public sealed class ApiTests : IDisposable
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<SessionBoardDto>(JsonHelper.Options))!;
     }
+
+    private static int[] SurveyRatings(int count) => Enumerable.Range(1, count)
+        .Select(number => number <= 10 ? (number % 2 == 1 ? 5 : 1) : 4).ToArray();
 
     [Fact]
     public async Task RejectsLoginWithWrongPassword()
@@ -320,9 +326,8 @@ public sealed class ApiTests : IDisposable
         var guest = (await joined.Content.ReadFromJsonAsync<JoinSessionResultDto>(JsonHelper.Options))!;
         (await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{session.Id}/close", facilitator, new { })))
             .EnsureSuccessStatusCode();
-        var facilitatorAnswer = new { teamMoreEngaged = true, usedCustomTheme = false,
-            engagementScore = 5, usabilityScore = 4, suggestion = "Boa experiência" };
-        var guestAnswer = new { engagementScore = 4, usabilityScore = 4, suggestion = "Boa experiência" };
+        var facilitatorAnswer = new { usedCustomTheme = false, ratings = SurveyRatings(24), suggestion = "Boa experiência" };
+        var guestAnswer = new { usedCustomTheme = false, ratings = SurveyRatings(19), suggestion = "Boa experiência" };
         (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{session.Id}/survey", facilitator, facilitatorAnswer)))
             .EnsureSuccessStatusCode();
         (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{session.Id}/survey", guest.Token, guestAnswer)))
@@ -333,8 +338,10 @@ public sealed class ApiTests : IDisposable
         var stats = await research.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(1, stats.GetProperty("sessions").GetInt32());
         Assert.Equal(2, stats.GetProperty("receivedResponses").GetInt32());
-        Assert.Equal(1, stats.GetProperty("teamMoreEngaged").GetProperty("yes").GetInt32());
-        Assert.Equal(1, stats.GetProperty("customThemeUse").GetProperty("no").GetInt32());
+        Assert.Equal(2, stats.GetProperty("questionnaire").GetProperty("count").GetInt32());
+        Assert.Equal(100, stats.GetProperty("questionnaire").GetProperty("facilitator").GetProperty("susAverage").GetDouble());
+        Assert.Equal(4, stats.GetProperty("questionnaire").GetProperty("participants").GetProperty("uesAverage").GetDouble());
+        Assert.Equal(2, stats.GetProperty("questionnaire").GetProperty("customThemeUse").GetProperty("no").GetInt32());
         var dashboard = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/dashboard", facilitator));
         dashboard.EnsureSuccessStatusCode();
         var dashboardStats = await dashboard.Content.ReadFromJsonAsync<JsonElement>();
@@ -383,31 +390,33 @@ public sealed class ApiTests : IDisposable
         var card = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/cards", guest.Token,
             new { columnId = real.Columns[0].Id, text = "Aprendizado da equipe" }));
         Assert.Equal(HttpStatusCode.Created, card.StatusCode);
-        var answer = new { engagementScore = 4, usabilityScore = 5, suggestion = "Tema alegre" };
+        var answer = new { usedCustomTheme = false, ratings = SurveyRatings(19), suggestion = "Tema alegre" };
         var early = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token, answer));
         Assert.Equal(HttpStatusCode.Conflict, early.StatusCode);
 
         (await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{real.Id}/close", admin, new { }))).EnsureSuccessStatusCode();
         (await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{test.Id}/close", admin, new { }))).EnsureSuccessStatusCode();
         var invalid = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token,
-            new { engagementScore = 0, usabilityScore = 5, suggestion = "" }));
+            new { usedCustomTheme = false, ratings = new int[19], suggestion = "" }));
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
         var missingSuggestion = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token,
-            new { engagementScore = 4, usabilityScore = 5, suggestion = " " }));
+            new { usedCustomTheme = false, ratings = SurveyRatings(19), suggestion = " " }));
         Assert.Equal(HttpStatusCode.BadRequest, missingSuggestion.StatusCode);
         var facilitatorMissingAnswers = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", admin,
-            new { engagementScore = 3, usabilityScore = 4, suggestion = "Nenhuma" }));
+            new { usedCustomTheme = false, ratings = SurveyRatings(19), suggestion = "Nenhuma" }));
         Assert.Equal(HttpStatusCode.BadRequest, facilitatorMissingAnswers.StatusCode);
         var guestClaimingFacilitatorAnswers = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token,
-            new { teamMoreEngaged = true, usedCustomTheme = true, engagementScore = 4, usabilityScore = 5, suggestion = "Tema alegre" }));
+            new { usedCustomTheme = true, customThemeName = "Natal", ratings = SurveyRatings(24), suggestion = "Tema alegre" }));
         Assert.Equal(HttpStatusCode.BadRequest, guestClaimingFacilitatorAnswers.StatusCode);
+        var missingThemeName = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", admin,
+            new { usedCustomTheme = true, ratings = SurveyRatings(24), suggestion = "Nenhuma" }));
+        Assert.Equal(HttpStatusCode.BadRequest, missingThemeName.StatusCode);
         var guestAnswer = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token, answer));
         Assert.Equal(HttpStatusCode.Created, guestAnswer.StatusCode);
         var duplicate = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", guest.Token, answer));
         Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
         var facilitatorAnswer = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{real.Id}/survey", admin,
-            new { teamMoreEngaged = false, usedCustomTheme = true,
-                engagementScore = 3, usabilityScore = 4, suggestion = "Nenhuma" }));
+            new { usedCustomTheme = true, customThemeName = "Natal", ratings = SurveyRatings(24), suggestion = "Nenhuma" }));
         Assert.Equal(HttpStatusCode.Created, facilitatorAnswer.StatusCode);
 
         var realOverview = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/overview", admin));
@@ -416,8 +425,9 @@ public sealed class ApiTests : IDisposable
         Assert.Equal(1, realStats.GetProperty("sessions").GetInt32());
         Assert.Equal(2, realStats.GetProperty("receivedResponses").GetInt32());
         Assert.Equal(1, realStats.GetProperty("cards").GetInt32());
-        Assert.Equal(1, realStats.GetProperty("teamMoreEngaged").GetProperty("no").GetInt32());
-        Assert.Equal(1, realStats.GetProperty("customThemeUse").GetProperty("yes").GetInt32());
+        Assert.Equal(2, realStats.GetProperty("questionnaire").GetProperty("count").GetInt32());
+        Assert.Equal(1, realStats.GetProperty("questionnaire").GetProperty("customThemeUse").GetProperty("yes").GetInt32());
+        Assert.Equal(1, realStats.GetProperty("questionnaire").GetProperty("customThemeUse").GetProperty("no").GetInt32());
         var testOverview = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/overview?mode=test", admin));
         var testStats = await testOverview.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(1, testStats.GetProperty("sessions").GetInt32());
@@ -429,16 +439,59 @@ public sealed class ApiTests : IDisposable
         Assert.Equal(2, data.GetProperty("responses").GetArrayLength());
         var facilitatorResponse = data.GetProperty("responses").EnumerateArray()
             .Single(response => response.GetProperty("respondentRole").GetString() == "FACILITATOR");
-        Assert.False(facilitatorResponse.GetProperty("teamMoreEngaged").GetBoolean());
+        Assert.Equal(24, facilitatorResponse.GetProperty("ratings").GetArrayLength());
+        Assert.Equal(100, facilitatorResponse.GetProperty("susScore").GetDouble());
         Assert.True(facilitatorResponse.GetProperty("usedCustomTheme").GetBoolean());
+        Assert.Equal("Natal", facilitatorResponse.GetProperty("customThemeName").GetString());
         var guestResponse = data.GetProperty("responses").EnumerateArray()
             .Single(response => response.GetProperty("respondentRole").GetString() == "PARTICIPANT");
-        Assert.Equal(JsonValueKind.Null, guestResponse.GetProperty("teamMoreEngaged").ValueKind);
+        Assert.Equal(19, guestResponse.GetProperty("ratings").GetArrayLength());
+        Assert.Equal(JsonValueKind.Null, guestResponse.GetProperty("customThemeName").ValueKind);
         Assert.Equal(2, data.GetProperty("metrics").GetProperty("participants").GetInt32());
         Assert.Equal(1, data.GetProperty("metrics").GetProperty("cards").GetInt32());
         var otherFacilitator = await LoginAsync("joao");
         var denied = await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/research/sessions/{real.Id}", otherFacilitator));
         Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+    }
+
+    [Fact]
+    public async Task ExistingRatingsStaySeparateFromSusAndUesResults()
+    {
+        var admin = await LoginAsync("marcos");
+        var session = await CreateSessionAsync(admin);
+        var joined = await _client.PostAsJsonAsync($"/api/sessions/{session.Id}/join", new { displayName = "Convidada" });
+        joined.EnsureSuccessStatusCode();
+        var guest = (await joined.Content.ReadFromJsonAsync<JoinSessionResultDto>(JsonHelper.Options))!;
+        (await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{session.Id}/close", admin, new { })))
+            .EnsureSuccessStatusCode();
+
+        var me = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/me", admin));
+        me.EnsureSuccessStatusCode();
+        var adminId = (await me.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<RetroVibeDbContext>();
+            db.SurveyResponses.Add(new SurveyResponseRow
+            {
+                Id = Guid.NewGuid().ToString(), SessionId = session.Id, RespondentId = adminId,
+                RespondentRole = "FACILITATOR", EngagementScore = 3, UsabilityScore = 4,
+                Suggestion = "Resposta anterior", SubmittedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+        var answer = new { usedCustomTheme = false, ratings = SurveyRatings(19), suggestion = "Boa experiência" };
+        (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{session.Id}/survey", guest.Token, answer)))
+            .EnsureSuccessStatusCode();
+
+        var overview = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/overview", admin));
+        overview.EnsureSuccessStatusCode();
+        var stats = await overview.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(2, stats.GetProperty("receivedResponses").GetInt32());
+        Assert.Equal(3, stats.GetProperty("engagementAverage").GetDouble());
+        Assert.Equal(4, stats.GetProperty("usabilityAverage").GetDouble());
+        Assert.Equal(1, stats.GetProperty("questionnaire").GetProperty("count").GetInt32());
+        Assert.Equal(100, stats.GetProperty("questionnaire").GetProperty("participants").GetProperty("susAverage").GetDouble());
+        Assert.Equal(JsonValueKind.Null, stats.GetProperty("questionnaire").GetProperty("facilitator").GetProperty("susAverage").ValueKind);
     }
 
     [Fact]

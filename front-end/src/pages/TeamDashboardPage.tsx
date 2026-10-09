@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { httpClient } from "@/shared/lib/httpClient";
 import { Card } from "@/shared/ui/Card";
 import { CalendarIcon, ClockIcon, StarIcon, UsersIcon } from "@/shared/ui/Icons";
+import { questionText, susQuestions, teamQuestions, uesQuestions } from "@/shared/surveyQuestionnaire";
 
 export function TeamDashboardPage() {
   const [squadId, setSquadId] = useState("");
@@ -24,6 +25,12 @@ export function TeamDashboardPage() {
       participants: { count: number; engagementAverage: number; usabilityAverage: number };
       teamMoreEngaged: { answered: number; yes: number; no: number; percentYes: number };
       customThemeUse: { answered: number; yes: number; no: number; percentYes: number };
+      questionnaire: { count: number;
+        facilitator: { count: number; susAverage: number | null; uesAverage: number | null; teamAverage: number | null;
+          questions: { number: number; answered: number; average: number | null }[] };
+        participants: { count: number; susAverage: number | null; uesAverage: number | null;
+          questions: { number: number; answered: number; average: number | null }[] };
+        customThemeUse: { answered: number; yes: number; no: number; percentYes: number } };
       suggestions: { respondentRole: string; suggestion: string }[] }>(
         "/research/overview", { mode: researchMode, squadId: squadId || undefined }), enabled: Boolean(currentUser) });
   const phaseTotal = dashboard ? dashboard.phaseAverages.collectMinutes + dashboard.phaseAverages.voteMinutes + dashboard.phaseAverages.discussMinutes : 0;
@@ -61,13 +68,21 @@ export function TeamDashboardPage() {
           {research && <div className="mb-6 rounded-2xl border border-violet-100 bg-violet-50/70 p-5">
             <h2 className="font-bold text-slate-800">Resultados da pesquisa</h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <StatCard icon={<StarIcon />} value={`${research.facilitator.engagementAverage}/5`} label="Engajamento do time · facilitadores" />
-              <StatCard icon={<StarIcon />} value={`${research.participants.engagementAverage}/5`} label="Engajamento pessoal · convidados" />
-              <StatCard icon={<StarIcon />} value={`${research.usabilityAverage}/5`} label="Usabilidade" />
-              <StatCard icon={<UsersIcon />} value={`${research.teamMoreEngaged.yes}/${research.teamMoreEngaged.answered}`} label="Equipe mais engajada · Sim" />
-              <StatCard icon={<StarIcon />} value={`${research.customThemeUse.yes}/${research.customThemeUse.answered}`} label="Tema personalizado · Sim" />
+              <StatCard icon={<StarIcon />} value={scaleScore(research.questionnaire.facilitator.susAverage, "/100")} label="SUS · facilitadores" />
+              <StatCard icon={<StarIcon />} value={scaleScore(research.questionnaire.participants.susAverage, "/100")} label="SUS · convidados" />
+              <StatCard icon={<StarIcon />} value={scaleScore(research.questionnaire.facilitator.uesAverage, "/5")} label="UES-SF · facilitadores" />
+              <StatCard icon={<StarIcon />} value={scaleScore(research.questionnaire.participants.uesAverage, "/5")} label="UES-SF · convidados" />
+              <StatCard icon={<UsersIcon />} value={scaleScore(research.questionnaire.facilitator.teamAverage, "/5")} label="Percepção da equipe · facilitadores" />
+              <StatCard icon={<StarIcon />} value={`${research.questionnaire.customThemeUse.yes}/${research.questionnaire.customThemeUse.answered}`} label="Tema personalizado · Sim" />
               <StatCard icon={<UsersIcon />} value={`${research.receivedResponses}/${research.expectedResponses}`} label="Questionários respondidos" />
             </div>
+            {research.facilitator.count + research.participants.count > 0 && <p className="mt-3 text-xs text-slate-500">
+              {research.facilitator.count + research.participants.count} respostas do questionário anterior estão preservadas e não entram nas médias SUS e UES-SF.
+            </p>}
+            {research.questionnaire.count > 0 && <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <QuestionBreakdown title="Facilitadores" questions={research.questionnaire.facilitator.questions} facilitator />
+              <QuestionBreakdown title="Convidados" questions={research.questionnaire.participants.questions} facilitator={false} />
+            </div>}
             {research.suggestions.length > 0 && <div className="mt-4 border-t border-violet-100 pt-4">
               <h3 className="text-sm font-bold text-slate-800">Sugestões dos questionários</h3>
               <div className="mt-2 space-y-2">{research.suggestions.map((item, index) => <p key={index} className="rounded-xl bg-white px-3 py-2 text-sm text-slate-600">
@@ -76,7 +91,7 @@ export function TeamDashboardPage() {
           </div>}
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard icon={<UsersIcon />} value={String(dashboard.averageParticipants)} label="Média de participantes" />
-            <StatCard icon={<StarIcon />} value={`${research?.participants.engagementAverage ?? 0}/5`} label="Engajamento dos convidados" />
+            <StatCard icon={<StarIcon />} value={scaleScore(research?.questionnaire.participants.uesAverage, "/5")} label="Engajamento dos convidados · UES-SF" />
             <StatCard icon={<ClockIcon />} value={`${dashboard.averageDurationMinutes} min`} label="Duração média" />
             <StatCard icon={<CalendarIcon />} value={String(dashboard.sessionsInPeriod)} label="Sessões no período" />
           </div>
@@ -152,4 +167,17 @@ export function TeamDashboardPage() {
       )}
     </div>
   );
+}
+
+function scaleScore(value: number | null | undefined, suffix: string) { return value == null ? "—" : `${value}${suffix}`; }
+
+function QuestionBreakdown({ title, questions, facilitator }: { title: string;
+  questions: { number: number; answered: number; average: number | null }[]; facilitator: boolean }) {
+  const labels = facilitator ? [...susQuestions, ...uesQuestions, ...teamQuestions] : [...susQuestions, ...uesQuestions];
+  return <details className="rounded-xl bg-white p-4 text-sm">
+    <summary className="cursor-pointer font-bold text-violet-700">Média por afirmação · {title}</summary>
+    <ol className="mt-3 space-y-2 text-slate-700">{questions.map(item => <li key={item.number}>
+      {item.number}. {questionText(labels[item.number - 1], facilitator)} <strong>{scaleScore(item.average, "/5")}</strong>
+    </li>)}</ol>
+  </details>;
 }

@@ -29,24 +29,33 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
             .GroupBy(u => u.AllowedSessionId).Select(g => new { SessionId = g.Key, Count = g.Count() }).ToListAsync(ct);
         var actionItems = await db.ActionItems.CountAsync(a => ids.Contains(a.SessionId), ct);
         var expected = sessions.Count + guestCounts.Sum(g => g.Count);
-        var facilitatorResponses = responses.Where(r => r.RespondentRole == "FACILITATOR").ToList();
+        var legacy = responses.Where(r => r.QuestionnaireVersion == 1).ToList();
+        var current = responses.Where(r => r.QuestionnaireVersion == SurveyQuestionnaire.Version).ToList();
+        var legacyFacilitators = legacy.Where(r => r.RespondentRole == "FACILITATOR").ToList();
         return Ok(new
         {
             sessions = sessions.Count, expectedResponses = expected, receivedResponses = responses.Count,
             completionPercent = expected == 0 ? 0 : Math.Round(100.0 * responses.Count / expected, 1),
-            engagementAverage = Average(responses.Select(r => r.EngagementScore)),
-            usabilityAverage = Average(responses.Select(r => r.UsabilityScore)),
+            engagementAverage = Average(legacy.Select(r => r.EngagementScore)),
+            usabilityAverage = Average(legacy.Select(r => r.UsabilityScore)),
             cards = sessions.Sum(s => s.Columns.Sum(c => c.Cards.Count)),
             votes = sessions.Sum(s => s.Columns.Sum(c => c.Cards.Sum(card => card.VoteCount))),
             actionItems,
-            facilitator = SummarizeRole(responses, "FACILITATOR"),
-            participants = SummarizeRole(responses, "PARTICIPANT"),
-            teamMoreEngaged = SummarizeYesNo(facilitatorResponses.Select(r => r.TeamMoreEngaged)),
-            customThemeUse = SummarizeYesNo(facilitatorResponses.Select(r => r.UsedCustomTheme)),
+            facilitator = SummarizeRole(legacy, "FACILITATOR"),
+            participants = SummarizeRole(legacy, "PARTICIPANT"),
+            teamMoreEngaged = SummarizeYesNo(legacyFacilitators.Select(r => r.TeamMoreEngaged)),
+            customThemeUse = SummarizeYesNo(legacyFacilitators.Select(r => r.UsedCustomTheme)),
+            questionnaire = new
+            {
+                count = current.Count,
+                facilitator = SurveyQuestionnaire.Summary(current, "FACILITATOR"),
+                participants = SurveyQuestionnaire.Summary(current, "PARTICIPANT"),
+                customThemeUse = SummarizeYesNo(current.Select(r => r.UsedCustomTheme))
+            },
             scoreDistribution = Enumerable.Range(1, 5).Select(score => new
             {
-                score, engagement = responses.Count(r => r.EngagementScore == score),
-                usability = responses.Count(r => r.UsabilityScore == score)
+                score, engagement = legacy.Count(r => r.EngagementScore == score),
+                usability = legacy.Count(r => r.UsabilityScore == score)
             }),
             suggestions = responses.Where(r => !string.IsNullOrWhiteSpace(r.Suggestion))
                 .Select(r => new { r.RespondentRole, r.Suggestion })
@@ -104,6 +113,8 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
         var guests = await db.Users.Where(u => u.AllowedSessionId == sessionId).OrderBy(u => u.Name).ToListAsync(ct);
         var responses = await db.SurveyResponses.Where(r => r.SessionId == sessionId)
             .OrderBy(r => r.SubmittedAt).ToListAsync(ct);
+        var legacy = responses.Where(r => r.QuestionnaireVersion == 1).ToList();
+        var current = responses.Where(r => r.QuestionnaireVersion == SurveyQuestionnaire.Version).ToList();
         var actionItems = await db.ActionItems.CountAsync(a => a.SessionId == sessionId, ct);
         var respondents = new List<object>();
         if (facilitator is not null)
@@ -116,8 +127,15 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
             squad = new { squad.Id, squad.Name },
             facilitator = facilitator is null ? null : new { facilitator.Id, facilitator.Name },
             expectedResponses = respondents.Count, receivedResponses = responses.Count,
-            engagementAverage = Average(responses.Select(r => r.EngagementScore)),
-            usabilityAverage = Average(responses.Select(r => r.UsabilityScore)),
+            engagementAverage = Average(legacy.Select(r => r.EngagementScore)),
+            usabilityAverage = Average(legacy.Select(r => r.UsabilityScore)),
+            questionnaire = new
+            {
+                count = current.Count,
+                facilitator = SurveyQuestionnaire.Summary(current, "FACILITATOR"),
+                participants = SurveyQuestionnaire.Summary(current, "PARTICIPANT"),
+                customThemeUse = SummarizeYesNo(current.Select(r => r.UsedCustomTheme))
+            },
             metrics = new
             {
                 participants = respondents.Count,
@@ -129,8 +147,14 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
             respondents = isAdmin ? respondents : null,
             responses = isAdmin ? responses.Select((r, index) => new
             {
-                number = index + 1, r.RespondentRole, r.TeamMoreEngaged, r.UsedCustomTheme,
-                r.EngagementScore, r.UsabilityScore,
+                number = index + 1, r.RespondentRole, r.QuestionnaireVersion,
+                r.TeamMoreEngaged, r.UsedCustomTheme, r.CustomThemeName,
+                engagementScore = r.QuestionnaireVersion == 1 ? (int?)r.EngagementScore : null,
+                usabilityScore = r.QuestionnaireVersion == 1 ? (int?)r.UsabilityScore : null,
+                ratings = SurveyQuestionnaire.Ratings(r),
+                susScore = SurveyQuestionnaire.Ratings(r) is { } ratings ? (double?)SurveyQuestionnaire.SusScore(ratings) : null,
+                uesAverage = SurveyQuestionnaire.Ratings(r) is { } uesRatings ? (double?)SurveyQuestionnaire.UesAverage(uesRatings) : null,
+                teamAverage = SurveyQuestionnaire.Ratings(r) is { } teamRatings ? SurveyQuestionnaire.TeamAverage(teamRatings) : null,
                 r.Suggestion
             }).ToList() : null
         });

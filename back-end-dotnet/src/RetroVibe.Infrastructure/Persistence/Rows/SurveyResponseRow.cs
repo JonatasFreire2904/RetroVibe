@@ -6,8 +6,11 @@ public sealed class SurveyResponseRow
     public string SessionId { get; set; } = null!;
     public string RespondentId { get; set; } = null!;
     public string RespondentRole { get; set; } = null!;
+    public int QuestionnaireVersion { get; set; } = 1;
+    public string? RatingsJson { get; set; }
     public bool? TeamMoreEngaged { get; set; }
     public bool? UsedCustomTheme { get; set; }
+    public string? CustomThemeName { get; set; }
     public int EngagementScore { get; set; }
     public int UsabilityScore { get; set; }
     public string Suggestion { get; set; } = null!;
