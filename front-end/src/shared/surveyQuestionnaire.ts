@@ -37,6 +37,6 @@ export const teamQuestions: SurveyQuestion[] = [
   { number: 24, text: "A retrospectiva com o RetroVibe contribuiu para a definição de ações de melhoria para a equipe." },
 ];
 
-export function questionText(question: SurveyQuestion, facilitator: boolean) {
-  return facilitator ? question.facilitatorText ?? question.text : question.text;
+export function questionText(question: SurveyQuestion, facilitator: boolean, version = 3) {
+  return facilitator && version === 2 ? question.facilitatorText ?? question.text : question.text;
 }

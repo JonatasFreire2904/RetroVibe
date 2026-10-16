@@ -11,7 +11,7 @@ interface Overview { sessions: number; expectedResponses: number; receivedRespon
   engagementAverage: number; usabilityAverage: number; cards: number; votes: number; actionItems: number;
   facilitator: RoleStats; participants: RoleStats;
   teamMoreEngaged: YesNoStats; customThemeUse: YesNoStats;
-  questionnaire: QuestionnaireStats;
+  questionnaire: QuestionnaireStats; previousQuestionnaire: QuestionnaireStats;
   scoreDistribution: { score: number; engagement: number; usability: number }[];
   suggestions: { respondentRole: string; suggestion: string }[] }
 interface RoleStats { count: number; engagementAverage: number; usabilityAverage: number }
@@ -27,7 +27,7 @@ interface ResearchSession { id: string; title: string | null; status: string; cr
 interface SessionDetail { id: string; title: string | null; isTest: boolean; squad: Squad;
   facilitator: { id: string; name: string } | null; expectedResponses: number; receivedResponses: number;
   engagementAverage: number; usabilityAverage: number;
-  questionnaire: QuestionnaireStats;
+  questionnaire: QuestionnaireStats; previousQuestionnaire: QuestionnaireStats;
   metrics: { participants: number; cards: number; votes: number; actionItems: number; durationMinutes: number };
   respondents: { name: string; role: string; completed: boolean }[];
   responses: { number: number; respondentRole: string; questionnaireVersion: number;
@@ -90,6 +90,8 @@ export function AdminResearchPage() {
         <Metric label="Cards criados" value={overview.data.cards} />
       </div>
       <QuestionnairePanel stats={overview.data.questionnaire} />
+      {overview.data.previousQuestionnaire.count > 0 &&
+        <QuestionnairePanel stats={overview.data.previousQuestionnaire} version={2} />}
       {overview.data.facilitator.count + overview.data.participants.count > 0 && <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
         <h2 className="font-bold text-slate-800">Respostas anteriores ao novo questionário</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2"><RoleCard title="Facilitadores" stats={overview.data.facilitator} />
@@ -156,6 +158,8 @@ export function AdminResearchPage() {
       <h2 className="text-lg font-bold text-slate-800">{detail.data.title || "Retrospectiva"} · Questionários</h2>
       <p className="mt-1 text-sm text-slate-500">{detail.data.squad.name} · Facilitador: {detail.data.facilitator?.name ?? "—"} · {detail.data.receivedResponses}/{detail.data.expectedResponses} respostas</p>
       <div className="mt-4"><QuestionnairePanel stats={detail.data.questionnaire} /></div>
+      {detail.data.previousQuestionnaire.count > 0 &&
+        <div className="mt-4"><QuestionnairePanel stats={detail.data.previousQuestionnaire} version={2} /></div>}
       {detail.data.responses?.some(r => r.questionnaireVersion === 1) && <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Metric label="Engajamento · questionário anterior" value={`${detail.data.engagementAverage}/5`} />
         <Metric label="Usabilidade · questionário anterior" value={`${detail.data.usabilityAverage}/5`} /></div>}
@@ -173,14 +177,14 @@ export function AdminResearchPage() {
       <h3 className="mt-6 font-bold text-slate-800">Respostas individuais</h3>
       <div className="mt-3 grid gap-3 md:grid-cols-2">{detail.data.responses?.map(r => <article key={r.number} className="rounded-xl border border-slate-200 p-4 text-sm">
         <p className="font-bold text-violet-700">Questionário #{r.number} · {r.respondentRole === "FACILITATOR" ? "Facilitador" : "Convidado"}</p>
-        {r.questionnaireVersion === 2 ? <>
+        {r.questionnaireVersion >= 2 ? <>
           <p className="mt-2">Tema personalizado: {yesNo(r.usedCustomTheme)}{r.customThemeName && ` · ${r.customThemeName}`}</p>
           <p className="mt-1">SUS: {score(r.susScore, "/100")} · UES-SF: {score(r.uesAverage, "/5")}
             {r.teamAverage !== null && ` · Equipe: ${score(r.teamAverage, "/5")}`}</p>
           <details className="mt-3"><summary className="cursor-pointer font-semibold text-violet-700">Ver respostas das afirmações</summary>
             <ol className="mt-2 space-y-1">{r.ratings?.map((rating, index) => {
               const question = [...susQuestions, ...uesQuestions, ...teamQuestions][index];
-              return <li key={index}>{question.number}. {questionText(question, r.respondentRole === "FACILITATOR")}: <strong>{rating}/5</strong></li>;
+              return <li key={index}>{question.number}. {questionText(question, r.respondentRole === "FACILITATOR", r.questionnaireVersion)}: <strong>{rating}/5</strong></li>;
             })}</ol></details>
         </> : <>
           {r.respondentRole === "FACILITATOR" && <p className="mt-2">Equipe mais engajada: {yesNo(r.teamMoreEngaged)} · Tema personalizado: {yesNo(r.usedCustomTheme)}</p>}
@@ -199,28 +203,28 @@ function RoleCard({ title, stats }: { title: string; stats: RoleStats }) {
   return <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm"><h3 className="font-bold text-slate-800">{title} · {stats.count} respostas</h3>
     <p className="mt-3 text-sm text-slate-600">Engajamento {stats.engagementAverage}/5 · Usabilidade {stats.usabilityAverage}/5</p></div>;
 }
-function QuestionnairePanel({ stats }: { stats: QuestionnaireStats }) {
+function QuestionnairePanel({ stats, version = 3 }: { stats: QuestionnaireStats; version?: number }) {
   return <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
-    <h2 className="font-bold text-slate-800">Usabilidade e engajamento · novo questionário</h2>
-    <p className="mt-1 text-sm text-slate-500">{stats.count} respostas · SUS de 0 a 100; UES-SF e itens da equipe de 1 a 5.</p>
+    <h2 className="font-bold text-slate-800">Usabilidade e engajamento · {version === 2 ? "questionário anterior" : "questionário atual"}</h2>
+    <p className="mt-1 text-sm text-slate-500">{stats.count} respostas · SUS de 0 a 100; UES-SF{version === 2 ? " e itens da equipe" : ""} de 1 a 5.</p>
     {stats.count > 0 && <>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <ScaleCard title="Facilitadores" stats={stats.facilitator} facilitator />
-        <ScaleCard title="Convidados" stats={stats.participants} facilitator={false} />
+        <ScaleCard title="Facilitadores" stats={stats.facilitator} facilitator version={version} />
+        <ScaleCard title="Convidados" stats={stats.participants} facilitator={false} version={version} />
       </div>
       <div className="mt-3"><YesNoCard title="Uso de tema personalizado" stats={stats.customThemeUse} /></div>
     </>}
   </section>;
 }
-function ScaleCard({ title, stats, facilitator }: { title: string; stats: ScaleStats; facilitator: boolean }) {
-  const questions = facilitator ? [...susQuestions, ...uesQuestions, ...teamQuestions] : [...susQuestions, ...uesQuestions];
+function ScaleCard({ title, stats, facilitator, version }: { title: string; stats: ScaleStats; facilitator: boolean; version: number }) {
+  const questions = facilitator && version === 2 ? [...susQuestions, ...uesQuestions, ...teamQuestions] : [...susQuestions, ...uesQuestions];
   return <div className="rounded-2xl border border-violet-100 bg-violet-50/40 p-4">
     <h3 className="font-bold text-slate-800">{title} · {stats.count} respostas</h3>
     <p className="mt-2 text-sm text-slate-700">SUS: {score(stats.susAverage, "/100")} · UES-SF: {score(stats.uesAverage, "/5")}
-      {facilitator && ` · Equipe: ${score(stats.teamAverage, "/5")}`}</p>
+      {facilitator && version === 2 && ` · Equipe: ${score(stats.teamAverage, "/5")}`}</p>
     {stats.count > 0 && <details className="mt-3 text-sm"><summary className="cursor-pointer font-semibold text-violet-700">Ver média por afirmação</summary>
       <ol className="mt-2 space-y-2">{stats.questions.map(item => <li key={item.number}>
-        {item.number}. {questionText(questions[item.number - 1], facilitator)} <strong>{score(item.average, "/5")}</strong>
+        {item.number}. {questionText(questions[item.number - 1], facilitator, version)} <strong>{score(item.average, "/5")}</strong>
       </li>)}</ol></details>}
   </div>;
 }

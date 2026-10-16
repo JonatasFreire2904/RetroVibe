@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { httpClient, ApiError } from '@/shared/lib/httpClient';
 import { getParticipantMeta } from '@/shared/lib/participantMeta';
 import { getParticipantToken } from '@/shared/lib/participantToken';
-import { questionText, susQuestions, teamQuestions, uesQuestions, type SurveyQuestion } from '@/shared/surveyQuestionnaire';
+import { questionText, susQuestions, uesQuestions, type SurveyQuestion } from '@/shared/surveyQuestionnaire';
 
 interface SurveyStatus {
   enabled: boolean; open: boolean; completed: boolean;
@@ -28,7 +28,7 @@ export function SurveyPage({ guest = false }: { guest?: boolean }) {
     enabled: Boolean(sessionId && hasGuestAccess), refetchOnWindowFocus: false });
   const result = status.data;
   const isFacilitator = result?.role === 'FACILITATOR';
-  const questions = isFacilitator ? [...susQuestions, ...uesQuestions, ...teamQuestions] : [...susQuestions, ...uesQuestions];
+  const questions = [...susQuestions, ...uesQuestions];
   const answered = questions.filter(question => ratings[question.number] !== undefined).length;
   const canSubmit = Boolean(result?.open && answered === questions.length && usedCustomTheme !== null &&
     (!isFacilitator || !usedCustomTheme || customThemeName.trim()) && suggestion.trim());
@@ -80,8 +80,6 @@ export function SurveyPage({ guest = false }: { guest?: boolean }) {
         <QuestionSection title='B. Engajamento · UES-SF' questions={uesQuestions} ratings={ratings}
           facilitator={isFacilitator} onChange={setRating}
           description={isFacilitator ? 'Responda sobre a sua própria experiência.' : undefined} />
-        {isFacilitator && <QuestionSection title='C. Itens complementares sobre a equipe' questions={teamQuestions}
-          ratings={ratings} facilitator onChange={setRating} />}
         <section className='rounded-2xl border border-violet-100 p-5'>
           <h2 className='text-lg font-bold text-slate-900'>Pergunta aberta</h2>
           <label className='mt-3 block text-sm font-semibold text-slate-800'>

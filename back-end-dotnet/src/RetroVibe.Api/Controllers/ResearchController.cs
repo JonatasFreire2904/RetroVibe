@@ -30,6 +30,7 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
         var actionItems = await db.ActionItems.CountAsync(a => ids.Contains(a.SessionId), ct);
         var expected = sessions.Count + guestCounts.Sum(g => g.Count);
         var legacy = responses.Where(r => r.QuestionnaireVersion == 1).ToList();
+        var previous = responses.Where(r => r.QuestionnaireVersion == SurveyQuestionnaire.PreviousVersion).ToList();
         var current = responses.Where(r => r.QuestionnaireVersion == SurveyQuestionnaire.Version).ToList();
         var legacyFacilitators = legacy.Where(r => r.RespondentRole == "FACILITATOR").ToList();
         return Ok(new
@@ -51,6 +52,13 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
                 facilitator = SurveyQuestionnaire.Summary(current, "FACILITATOR"),
                 participants = SurveyQuestionnaire.Summary(current, "PARTICIPANT"),
                 customThemeUse = SummarizeYesNo(current.Select(r => r.UsedCustomTheme))
+            },
+            previousQuestionnaire = new
+            {
+                count = previous.Count,
+                facilitator = SurveyQuestionnaire.Summary(previous, "FACILITATOR", SurveyQuestionnaire.PreviousVersion),
+                participants = SurveyQuestionnaire.Summary(previous, "PARTICIPANT", SurveyQuestionnaire.PreviousVersion),
+                customThemeUse = SummarizeYesNo(previous.Select(r => r.UsedCustomTheme))
             },
             scoreDistribution = Enumerable.Range(1, 5).Select(score => new
             {
@@ -114,6 +122,7 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
         var responses = await db.SurveyResponses.Where(r => r.SessionId == sessionId)
             .OrderBy(r => r.SubmittedAt).ToListAsync(ct);
         var legacy = responses.Where(r => r.QuestionnaireVersion == 1).ToList();
+        var previous = responses.Where(r => r.QuestionnaireVersion == SurveyQuestionnaire.PreviousVersion).ToList();
         var current = responses.Where(r => r.QuestionnaireVersion == SurveyQuestionnaire.Version).ToList();
         var actionItems = await db.ActionItems.CountAsync(a => a.SessionId == sessionId, ct);
         var respondents = new List<object>();
@@ -135,6 +144,13 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
                 facilitator = SurveyQuestionnaire.Summary(current, "FACILITATOR"),
                 participants = SurveyQuestionnaire.Summary(current, "PARTICIPANT"),
                 customThemeUse = SummarizeYesNo(current.Select(r => r.UsedCustomTheme))
+            },
+            previousQuestionnaire = new
+            {
+                count = previous.Count,
+                facilitator = SurveyQuestionnaire.Summary(previous, "FACILITATOR", SurveyQuestionnaire.PreviousVersion),
+                participants = SurveyQuestionnaire.Summary(previous, "PARTICIPANT", SurveyQuestionnaire.PreviousVersion),
+                customThemeUse = SummarizeYesNo(previous.Select(r => r.UsedCustomTheme))
             },
             metrics = new
             {
