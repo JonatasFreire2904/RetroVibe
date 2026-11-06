@@ -437,6 +437,18 @@ public sealed class ApiTests : IDisposable
         var testStats = await testOverview.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(1, testStats.GetProperty("sessions").GetInt32());
         Assert.Equal(0, testStats.GetProperty("receivedResponses").GetInt32());
+        var respondents = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/respondents", admin));
+        respondents.EnsureSuccessStatusCode();
+        var roster = await respondents.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(2, roster.GetArrayLength());
+        var guestInRoster = roster.EnumerateArray().Single(person => person.GetProperty("role").GetString() == "PARTICIPANT");
+        Assert.Equal("Convidada", guestInRoster.GetProperty("name").GetString());
+        Assert.Equal("Phoenix", guestInRoster.GetProperty("squadName").GetString());
+        Assert.False(guestInRoster.TryGetProperty("ratings", out _));
+        Assert.False(guestInRoster.TryGetProperty("suggestion", out _));
+        var testRespondents = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/respondents?mode=test", admin));
+        testRespondents.EnsureSuccessStatusCode();
+        Assert.Equal(0, (await testRespondents.Content.ReadFromJsonAsync<JsonElement>()).GetArrayLength());
 
         var detail = await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/research/sessions/{real.Id}", admin));
         detail.EnsureSuccessStatusCode();
@@ -457,6 +469,8 @@ public sealed class ApiTests : IDisposable
         Assert.Equal(2, data.GetProperty("metrics").GetProperty("participants").GetInt32());
         Assert.Equal(1, data.GetProperty("metrics").GetProperty("cards").GetInt32());
         var otherFacilitator = await LoginAsync("joao");
+        var rosterDenied = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/respondents", otherFacilitator));
+        Assert.Equal(HttpStatusCode.Forbidden, rosterDenied.StatusCode);
         var denied = await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/research/sessions/{real.Id}", otherFacilitator));
         Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
     }

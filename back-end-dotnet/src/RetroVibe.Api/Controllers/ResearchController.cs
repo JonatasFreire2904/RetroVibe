@@ -70,6 +70,42 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
         });
     }
 
+    [HttpGet("respondents")]
+    [Authorize(Policy = "Admin")]
+    public async Task<IActionResult> Respondents([FromQuery] string? mode, CancellationToken ct)
+    {
+        if (!ValidMode(mode)) return BadRequest(new { error = "VALIDATION", message = "Filtro de teste inválido" });
+        var sessions = await db.Sessions.Where(s => s.SurveyEnabled && s.Status == SessionStatus.Completed)
+            .ToListAsync(ct);
+        sessions = sessions.Where(s => IncludeMode(s, mode)).ToList();
+        var sessionIds = sessions.Select(s => s.Id).ToList();
+        var responses = await db.SurveyResponses.Where(r => sessionIds.Contains(r.SessionId))
+            .Select(r => new { r.SessionId, r.RespondentId, r.RespondentRole }).ToListAsync(ct);
+        var userIds = responses.Select(r => r.RespondentId)
+            .Concat(sessions.Where(s => s.FacilitatorId is not null).Select(s => s.FacilitatorId!))
+            .Distinct().ToList();
+        var users = await db.Users.Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Name, ct);
+        var squadIds = sessions.Select(s => s.SquadId).Distinct().ToList();
+        var squads = await db.Squads.Where(s => squadIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.Name, ct);
+        var bySession = sessions.ToDictionary(s => s.Id);
+
+        return Ok(responses.Select(response =>
+        {
+            var session = bySession[response.SessionId];
+            return new
+            {
+                name = users.GetValueOrDefault(response.RespondentId, "Usuário indisponível"),
+                role = response.RespondentRole,
+                sessionTitle = session.Title,
+                sessionDate = session.ClosedAt ?? session.CreatedAt,
+                squadName = squads.GetValueOrDefault(session.SquadId, "Squad indisponível"),
+                facilitatorName = session.FacilitatorId is null ? null : users.GetValueOrDefault(session.FacilitatorId)
+            };
+        }).OrderByDescending(r => r.sessionDate).ThenBy(r => r.squadName).ThenBy(r => r.name).ToList());
+    }
+
     [HttpGet("facilitators/{facilitatorId}/squads")]
     [Authorize(Policy = "Admin")]
     public async Task<IActionResult> FacilitatorSquads(string facilitatorId, [FromQuery] string? mode, CancellationToken ct)

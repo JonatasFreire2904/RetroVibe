@@ -153,6 +153,7 @@ Calculado apenas sobre sessões `COMPLETED`.
 | `/sessions/:id/survey` | GET | — | `{ enabled, open, completed, role, sessionDate, questionnaireVersion: 3 }` para o facilitador da sessão ou um convidado dela |
 | `/sessions/:id/survey` | POST | `{ usedCustomTheme, customThemeName?, ratings: number[], suggestion }` | `{ completed: true }` (201) |
 | `/research/overview` | GET | query: `mode?, squadId?` | `questionnaire` com SUS, UES-SF, médias por afirmação e uso de tema; `previousQuestionnaire` reúne as respostas da versão 2; respostas da versão 1 permanecem nos campos legados |
+| `/research/respondents` | GET | query: `mode?` | Somente ADMIN: lista de quem concluiu o questionário, com nome, papel, sessão, squad e facilitador; não inclui respostas, notas ou horário de envio |
 
 O questionário abre após o encerramento da sessão. Todos respondem Sim/Não sobre o tema, as 19
 afirmações de SUS e UES-SF (notas inteiras de 1 a 5) e a sugestão aberta, que permanece obrigatória;

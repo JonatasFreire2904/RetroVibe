@@ -20,6 +20,8 @@ interface QuestionStats { number: number; answered: number; average: number | nu
 interface ScaleStats { count: number; susAverage: number | null; uesAverage: number | null;
   teamAverage: number | null; questions: QuestionStats[] }
 interface QuestionnaireStats { count: number; facilitator: ScaleStats; participants: ScaleStats; customThemeUse: YesNoStats }
+interface CompletedRespondent { name: string; role: string; sessionTitle: string | null;
+  sessionDate: string; squadName: string; facilitatorName: string | null }
 interface FacilitatorSquads { facilitator: { id: string; name: string; isTest: boolean };
   squads: (Squad & { sessions: number })[] }
 interface ResearchSession { id: string; title: string | null; status: string; createdAt: string;
@@ -54,6 +56,9 @@ export function AdminResearchPage() {
     queryFn: () => httpClient.get<Facilitator[]>("/admin/facilitators"), enabled: user?.accessLevel === "ADMIN" });
   const overview = useQuery({ queryKey: ["research", "overview", mode],
     queryFn: () => httpClient.get<Overview>("/research/overview", { mode }), enabled: user?.accessLevel === "ADMIN" });
+  const respondents = useQuery({ queryKey: ["research", "respondents", mode],
+    queryFn: () => httpClient.get<CompletedRespondent[]>("/research/respondents", { mode }),
+    enabled: user?.accessLevel === "ADMIN" });
   const facilitatorSquads = useQuery({ queryKey: ["research", "facilitator", facilitatorId, mode],
     queryFn: () => httpClient.get<FacilitatorSquads>(`/research/facilitators/${facilitatorId}/squads`, { mode }),
     enabled: Boolean(facilitatorId) });
@@ -89,6 +94,18 @@ export function AdminResearchPage() {
         <Metric label="Taxa de resposta" value={`${overview.data.completionPercent}%`} />
         <Metric label="Cards criados" value={overview.data.cards} />
       </div>
+      <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <h2 className="font-bold text-slate-800">Quem respondeu ao questionário</h2>
+        <p className="mt-1 text-sm text-slate-500">Consulte quem precisa assinar o termo. Esta lista não mostra notas nem textos enviados.</p>
+        {respondents.isLoading && <p className="mt-3 text-sm text-slate-500">Carregando respondentes…</p>}
+        {respondents.isError && <p className="mt-3 text-sm text-rose-600">Não foi possível carregar os respondentes.</p>}
+        {respondents.data?.length === 0 && <p className="mt-3 text-sm text-slate-500">Nenhum questionário respondido neste filtro.</p>}
+        {respondents.data && respondents.data.length > 0 && <div className="mt-4 max-h-80 space-y-2 overflow-y-auto">
+          {respondents.data.map((person, index) => <div key={index} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+            <p className="font-semibold text-slate-800">{person.name} <span className="ml-2 text-xs font-medium text-violet-700">{person.role === "FACILITATOR" ? "Facilitador" : "Convidado"}</span></p>
+            <p className="mt-1 text-xs text-slate-500">{person.sessionTitle || "Retrospectiva"} · {person.squadName} · Facilitador: {person.facilitatorName ?? "—"} · {new Date(person.sessionDate).toLocaleDateString("pt-BR")}</p>
+          </div>)}</div>}
+      </section>
       <QuestionnairePanel stats={overview.data.questionnaire} />
       {overview.data.previousQuestionnaire.count > 0 &&
         <QuestionnairePanel stats={overview.data.previousQuestionnaire} version={2} />}
