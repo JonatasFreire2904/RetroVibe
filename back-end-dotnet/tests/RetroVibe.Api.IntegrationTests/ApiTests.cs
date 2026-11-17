@@ -355,6 +355,56 @@ public sealed class ApiTests : IDisposable
     }
 
     [Fact]
+    public async Task ResearchComparesCurrentQuestionnaireBySessionThemeAndRespondentRole()
+    {
+        var admin = await LoginAsync("marcos");
+        var themedCreate = await _client.SendAsync(Authorized(HttpMethod.Post, "/api/sessions", admin,
+            new { templateId = "4ls", themeId = "natal", squadName = "Phoenix" }));
+        themedCreate.EnsureSuccessStatusCode();
+        var themed = (await themedCreate.Content.ReadFromJsonAsync<SessionBoardDto>(JsonHelper.Options))!;
+        var plain = await CreateSessionAsync(admin, "Phoenix", "4ls");
+
+        var themedJoin = await _client.PostAsJsonAsync($"/api/sessions/{themed.Id}/join", new { displayName = "Convidado com tema" });
+        themedJoin.EnsureSuccessStatusCode();
+        var themedGuest = (await themedJoin.Content.ReadFromJsonAsync<JoinSessionResultDto>(JsonHelper.Options))!;
+        var plainJoin = await _client.PostAsJsonAsync($"/api/sessions/{plain.Id}/join", new { displayName = "Convidado sem tema" });
+        plainJoin.EnsureSuccessStatusCode();
+        var plainGuest = (await plainJoin.Content.ReadFromJsonAsync<JoinSessionResultDto>(JsonHelper.Options))!;
+
+        foreach (var session in new[] { themed, plain })
+            (await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{session.Id}/close", admin, new { })))
+                .EnsureSuccessStatusCode();
+        (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{themed.Id}/survey", admin,
+            new { usedCustomTheme = true, customThemeName = "Natal", ratings = SurveyRatings(19), suggestion = "Nenhuma" })))
+            .EnsureSuccessStatusCode();
+        (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{themed.Id}/survey", themedGuest.Token,
+            new { usedCustomTheme = false, ratings = Enumerable.Repeat(2, 19).ToArray(), suggestion = "Nenhuma" })))
+            .EnsureSuccessStatusCode();
+        (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{plain.Id}/survey", admin,
+            new { usedCustomTheme = false, ratings = Enumerable.Repeat(3, 19).ToArray(), suggestion = "Nenhuma" })))
+            .EnsureSuccessStatusCode();
+        (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{plain.Id}/survey", plainGuest.Token,
+            new { usedCustomTheme = true, ratings = Enumerable.Repeat(4, 19).ToArray(), suggestion = "Nenhuma" })))
+            .EnsureSuccessStatusCode();
+
+        var response = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/overview", admin));
+        response.EnsureSuccessStatusCode();
+        var comparison = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("themeComparison");
+        var withTheme = comparison.GetProperty("withTheme");
+        var withoutTheme = comparison.GetProperty("withoutTheme");
+        Assert.Equal(1, withTheme.GetProperty("sessions").GetInt32());
+        Assert.Equal(2, withTheme.GetProperty("responses").GetInt32());
+        Assert.Equal(100, withTheme.GetProperty("facilitator").GetProperty("susAverage").GetDouble());
+        Assert.Equal(5, withTheme.GetProperty("facilitator").GetProperty("questions")[0].GetProperty("average").GetDouble());
+        Assert.Equal(2, withTheme.GetProperty("participants").GetProperty("uesAverage").GetDouble());
+        Assert.Equal(1, withoutTheme.GetProperty("sessions").GetInt32());
+        Assert.Equal(2, withoutTheme.GetProperty("responses").GetInt32());
+        Assert.Equal(50, withoutTheme.GetProperty("facilitator").GetProperty("susAverage").GetDouble());
+        Assert.Equal(3, withoutTheme.GetProperty("facilitator").GetProperty("questions")[0].GetProperty("average").GetDouble());
+        Assert.Equal(4, withoutTheme.GetProperty("participants").GetProperty("uesAverage").GetDouble());
+    }
+
+    [Fact]
     public async Task FacilitatorCanCreateSeveralSquadsButCannotClaimAnotherThroughProfile()
     {
         var token = await LoginAsync("joao");

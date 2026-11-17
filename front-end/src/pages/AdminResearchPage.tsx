@@ -11,7 +11,7 @@ interface Overview { sessions: number; expectedResponses: number; receivedRespon
   engagementAverage: number; usabilityAverage: number; cards: number; votes: number; actionItems: number;
   facilitator: RoleStats; participants: RoleStats;
   teamMoreEngaged: YesNoStats; customThemeUse: YesNoStats;
-  questionnaire: QuestionnaireStats; previousQuestionnaire: QuestionnaireStats;
+  questionnaire: QuestionnaireStats; themeComparison: ThemeComparison; previousQuestionnaire: QuestionnaireStats;
   scoreDistribution: { score: number; engagement: number; usability: number }[];
   suggestions: { respondentRole: string; suggestion: string }[] }
 interface RoleStats { count: number; engagementAverage: number; usabilityAverage: number }
@@ -20,6 +20,8 @@ interface QuestionStats { number: number; answered: number; average: number | nu
 interface ScaleStats { count: number; susAverage: number | null; uesAverage: number | null;
   teamAverage: number | null; questions: QuestionStats[] }
 interface QuestionnaireStats { count: number; facilitator: ScaleStats; participants: ScaleStats; customThemeUse: YesNoStats }
+interface ThemeGroupStats { sessions: number; responses: number; facilitator: ScaleStats; participants: ScaleStats }
+interface ThemeComparison { withTheme: ThemeGroupStats; withoutTheme: ThemeGroupStats }
 interface CompletedRespondent { name: string; role: string; sessionTitle: string | null;
   sessionDate: string; squadName: string; facilitatorName: string | null }
 interface FacilitatorSquads { facilitator: { id: string; name: string; isTest: boolean };
@@ -107,6 +109,7 @@ export function AdminResearchPage() {
           </div>)}</div>}
       </section>
       <QuestionnairePanel stats={overview.data.questionnaire} />
+      {overview.data.questionnaire.count > 0 && <ThemeComparisonPanel comparison={overview.data.themeComparison} />}
       {overview.data.previousQuestionnaire.count > 0 &&
         <QuestionnairePanel stats={overview.data.previousQuestionnaire} version={2} />}
       {overview.data.facilitator.count + overview.data.participants.count > 0 && <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
@@ -231,6 +234,23 @@ function QuestionnairePanel({ stats, version = 3 }: { stats: QuestionnaireStats;
       </div>
       <div className="mt-3"><YesNoCard title="Uso de tema personalizado" stats={stats.customThemeUse} /></div>
     </>}
+  </section>;
+}
+function ThemeComparisonPanel({ comparison }: { comparison: ThemeComparison }) {
+  return <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+    <h2 className="font-bold text-slate-800">Comparação por tema da sessão</h2>
+    <p className="mt-1 text-sm text-slate-500">Tema selecionado na criação da retrospectiva · respostas do questionário atual.</p>
+    <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      {([['Com tema', comparison.withTheme], ['Sem tema', comparison.withoutTheme]] as const).map(([title, group]) =>
+        <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <h3 className="font-bold text-slate-800">{title}</h3>
+          <p className="mt-1 text-sm text-slate-500">{group.sessions} sessões · {group.responses} respostas</p>
+          <div className="mt-3 grid gap-3">
+            <ScaleCard title="Facilitadores" stats={group.facilitator} facilitator version={3} />
+            <ScaleCard title="Convidados" stats={group.participants} facilitator={false} version={3} />
+          </div>
+        </div>) }
+    </div>
   </section>;
 }
 function ScaleCard({ title, stats, facilitator, version }: { title: string; stats: ScaleStats; facilitator: boolean; version: number }) {

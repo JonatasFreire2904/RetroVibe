@@ -53,6 +53,11 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
                 participants = SurveyQuestionnaire.Summary(current, "PARTICIPANT"),
                 customThemeUse = SummarizeYesNo(current.Select(r => r.UsedCustomTheme))
             },
+            themeComparison = new
+            {
+                withTheme = SummarizeTheme(sessions.Where(s => s.ThemeId != "sem-tema"), current),
+                withoutTheme = SummarizeTheme(sessions.Where(s => s.ThemeId == "sem-tema"), current)
+            },
             previousQuestionnaire = new
             {
                 count = previous.Count,
@@ -225,6 +230,19 @@ public sealed class ResearchController(RetroVibeDbContext db) : ControllerBase
         var responses = all.Where(r => r.RespondentRole == role).ToList();
         return new { count = responses.Count, engagementAverage = Average(responses.Select(r => r.EngagementScore)),
             usabilityAverage = Average(responses.Select(r => r.UsabilityScore)) };
+    }
+
+    private static object SummarizeTheme(IEnumerable<RetroSession> sessions, IEnumerable<SurveyResponseRow> responses)
+    {
+        var sessionIds = sessions.Select(s => s.Id).ToHashSet();
+        var answers = responses.Where(r => sessionIds.Contains(r.SessionId)).ToList();
+        return new
+        {
+            sessions = sessionIds.Count,
+            responses = answers.Count,
+            facilitator = SurveyQuestionnaire.Summary(answers, "FACILITATOR"),
+            participants = SurveyQuestionnaire.Summary(answers, "PARTICIPANT")
+        };
     }
 
     private static object SummarizeYesNo(IEnumerable<bool?> answers)
