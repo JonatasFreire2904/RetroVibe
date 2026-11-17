@@ -7,7 +7,7 @@ import { getParticipantToken } from '@/shared/lib/participantToken';
 import { questionText, susQuestions, uesQuestions, type SurveyQuestion } from '@/shared/surveyQuestionnaire';
 
 interface SurveyStatus {
-  enabled: boolean; open: boolean; completed: boolean;
+  collectionEnabled: boolean; enabled: boolean; open: boolean; completed: boolean;
   role: 'FACILITATOR' | 'PARTICIPANT'; sessionDate: string;
 }
 
@@ -55,7 +55,8 @@ export function SurveyPage({ guest = false }: { guest?: boolean }) {
       {status.isError && <p className='mt-6 text-sm text-rose-600'>Não foi possível abrir o questionário. Atualize a página e tente novamente.</p>}
       {completed && <div className='mt-7 rounded-2xl bg-emerald-50 p-5 text-emerald-800'><strong>Obrigado por responder!</strong>
         <p className='mt-1 text-sm'>Sua avaliação foi registrada.</p>{!guest && <Link to='/' className='mt-3 inline-block font-semibold underline'>Voltar à Home</Link>}</div>}
-      {result && !result.enabled && !completed && <p className='mt-6 text-sm text-slate-600'>Esta sessão não tem questionário de avaliação.</p>}
+      {result && !result.collectionEnabled && !completed && <p className='mt-6 text-sm text-slate-600'>A coleta de respostas desta pesquisa foi encerrada.</p>}
+      {result?.collectionEnabled && !result.enabled && !completed && <p className='mt-6 text-sm text-slate-600'>Esta sessão não tem questionário de avaliação.</p>}
       {result?.enabled && !result.open && !completed && <p className='mt-6 text-sm text-slate-600'>O questionário será liberado quando o facilitador encerrar a sessão.</p>}
       {result?.open && !completed && <form className='mt-7 space-y-8' onSubmit={handleSubmit}>
         <div className='rounded-2xl bg-slate-50 p-4 text-sm text-slate-700'>

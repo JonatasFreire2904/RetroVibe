@@ -150,8 +150,8 @@ Calculado apenas sobre sessões `COMPLETED`.
 
 | Rota | Método | Body | Retorno |
 |---|---|---|---|
-| `/sessions/:id/survey` | GET | — | `{ enabled, open, completed, role, sessionDate, questionnaireVersion: 3 }` para o facilitador da sessão ou um convidado dela |
-| `/sessions/:id/survey` | POST | `{ usedCustomTheme, customThemeName?, ratings: number[], suggestion }` | `{ completed: true }` (201) |
+| `/sessions/:id/survey` | GET | — | `{ collectionEnabled, enabled, open, completed, role, sessionDate, questionnaireVersion: 3 }` para o facilitador da sessão ou um convidado dela |
+| `/sessions/:id/survey` | POST | `{ usedCustomTheme, customThemeName?, ratings: number[], suggestion }` | `{ completed: true }` (201), ou `SURVEY_CLOSED` (409) quando a coleta está encerrada |
 | `/research/overview` | GET | query: `mode?, squadId?` | `questionnaire` com SUS, UES-SF, médias por afirmação e uso de tema; `previousQuestionnaire` reúne as respostas da versão 2; respostas da versão 1 permanecem nos campos legados |
 | `/research/respondents` | GET | query: `mode?` | Somente ADMIN: lista de quem concluiu o questionário, com nome, papel, sessão, squad e facilitador; não inclui respostas, notas ou horário de envio |
 
@@ -160,6 +160,11 @@ afirmações de SUS e UES-SF (notas inteiras de 1 a 5) e a sugestão aberta, que
 é possível escrever `Nenhuma`. O facilitador que marcou `usedCustomTheme: true` informa
 `customThemeName`. Assim, `ratings` deve conter exatamente 19 valores para ambos os papéis,
 na ordem do questionário. A data vem da sessão.
+
+Com `SURVEY_COLLECTION_ENABLED=false`, novas sessões são criadas sem questionário, sessões antigas
+deixam de exibi-lo e o POST não aceita respostas novas. Sessões ainda em andamento deixam de integrar
+a pesquisa quando forem encerradas. Os dados já salvos e os relatórios históricos permanecem
+disponíveis; as sessões concluídas antes do corte não são reclassificadas como testes.
 
 SUS usa a pontuação padrão de 0 a 100: para as afirmações ímpares, subtrai-se 1 da nota; para as
 pares, subtrai-se a nota de 5; a soma é multiplicada por 2,5. UES-SF é a média das afirmações 11 a 19

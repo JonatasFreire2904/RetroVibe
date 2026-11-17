@@ -67,7 +67,7 @@ public sealed class CreateSessionCommandHandler(ISessionRepository sessions, ICa
             Guid.NewGuid().ToString(), request.Title, template.Id, theme.Id, squad.Id,
             request.PrivacyMode ?? Domain.Entities.PrivacyMode.Identified, columns, request.SequentialFlow ?? false,
             request.ActionCardsEnabled ?? true, request.CardBlurEnabled ?? true,
-            requester.Id, requester.IsTest || request.IsTest == true, surveyEnabled: true);
+            requester.Id, requester.IsTest || request.IsTest == true, surveyEnabled: SurveyCollection.IsEnabled);
 
         await sessions.SaveAsync(session, ct);
 

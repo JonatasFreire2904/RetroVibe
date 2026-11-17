@@ -25,6 +25,7 @@ public sealed class CloseSessionCommandHandler(
         var access = SquadAccessGuard.AssertSquadAccess(user, session.SquadId);
         if (!access.IsOk) return Result<SessionBoardDto>.FromFailure(access);
 
+        if (!SurveyCollection.IsEnabled) session.DisableSurvey();
         var closed = session.Close(new CloseSessionInput(request.FeedbackScore));
         if (!closed.IsOk) return Result<SessionBoardDto>.FromFailure(closed);
 

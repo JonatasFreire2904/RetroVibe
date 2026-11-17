@@ -12,6 +12,7 @@ continua com seus dois serviços de desenvolvimento.
 - Uma réplica.
 - Volume persistente montado em `/app/data`.
 - `DATABASE_PATH=/app/data/retrovibe.db`.
+- `SURVEY_COLLECTION_ENABLED=false` para encerrar novos questionários sem alterar respostas antigas.
 - `Jwt__Key`: segredo aleatório exclusivo, com pelo menos 32 bytes.
 - `Seed__AdminPassword`: senha aleatória exclusiva, com pelo menos 16 caracteres.
 - `Seed__FacilitatorPassword`: outra senha aleatória, com pelo menos 16 caracteres.

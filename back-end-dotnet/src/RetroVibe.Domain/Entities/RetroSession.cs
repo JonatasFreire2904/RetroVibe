@@ -346,6 +346,8 @@ public sealed class RetroSession
 
     public void Join() => ParticipantsCount++;
 
+    public void DisableSurvey() => SurveyEnabled = false;
+
     public int DurationMinutes => ClosedAt is null ? 0 : (int)Math.Round((ClosedAt.Value - CreatedAt).TotalMinutes);
 
     public int TotalCards => _columns.Sum(c => c.Cards.Count);

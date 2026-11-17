@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using RetroVibe.Api.Auth;
 using RetroVibe.Application.Commands;
 using RetroVibe.Application.Queries;
+using RetroVibe.Application.Support;
 using Microsoft.EntityFrameworkCore;
 using RetroVibe.Domain.Entities;
 using RetroVibe.Infrastructure.Persistence;
@@ -27,6 +28,7 @@ public sealed class MeController(IMediator mediator, RetroVibeDbContext db) : Co
     [HttpGet("pending-surveys")]
     public async Task<IActionResult> PendingSurveys(CancellationToken ct)
     {
+        if (!SurveyCollection.IsEnabled) return Ok(Array.Empty<object>());
         var userId = User.GetUserId();
         var answered = db.SurveyResponses.Where(r => r.RespondentId == userId).Select(r => r.SessionId);
         var pending = await db.Sessions.Where(s => s.FacilitatorId == userId && s.SurveyEnabled &&

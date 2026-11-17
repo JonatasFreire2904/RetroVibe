@@ -476,6 +476,68 @@ public sealed class ApiTests : IDisposable
     }
 
     [Fact]
+    public async Task ClosingSurveyCollectionPreservesEarlierAnswersAndDoesNotInterruptRetrospectives()
+    {
+        var previous = Environment.GetEnvironmentVariable("SURVEY_COLLECTION_ENABLED");
+        try
+        {
+            Environment.SetEnvironmentVariable("SURVEY_COLLECTION_ENABLED", "true");
+            var admin = await LoginAsync("marcos");
+            var answeredSession = await CreateSessionAsync(admin);
+            var joined = await _client.PostAsJsonAsync($"/api/sessions/{answeredSession.Id}/join", new { displayName = "Convidada" });
+            joined.EnsureSuccessStatusCode();
+            var guest = (await joined.Content.ReadFromJsonAsync<JoinSessionResultDto>(JsonHelper.Options))!;
+            (await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{answeredSession.Id}/close", admin, new { })))
+                .EnsureSuccessStatusCode();
+            var answer = new { usedCustomTheme = false, ratings = SurveyRatings(19), suggestion = "Boa experiência" };
+            (await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{answeredSession.Id}/survey", admin, answer)))
+                .EnsureSuccessStatusCode();
+            var pendingSession = await CreateSessionAsync(admin);
+            (await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{pendingSession.Id}/close", admin, new { })))
+                .EnsureSuccessStatusCode();
+            var pendingBefore = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/me/pending-surveys", admin));
+            pendingBefore.EnsureSuccessStatusCode();
+            Assert.Single((await pendingBefore.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray());
+            var inProgressSession = await CreateSessionAsync(admin);
+
+            Environment.SetEnvironmentVariable("SURVEY_COLLECTION_ENABLED", "false");
+            var status = await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/sessions/{answeredSession.Id}/survey", guest.Token));
+            status.EnsureSuccessStatusCode();
+            var surveyStatus = await status.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.False(surveyStatus.GetProperty("collectionEnabled").GetBoolean());
+            Assert.False(surveyStatus.GetProperty("enabled").GetBoolean());
+            Assert.False(surveyStatus.GetProperty("open").GetBoolean());
+            var rejected = await _client.SendAsync(Authorized(HttpMethod.Post, $"/api/sessions/{answeredSession.Id}/survey", guest.Token, answer));
+            Assert.Equal(HttpStatusCode.Conflict, rejected.StatusCode);
+            Assert.Equal("SURVEY_CLOSED", (await rejected.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("error").GetString());
+            var board = await _client.SendAsync(Authorized(HttpMethod.Get, $"/api/sessions/{answeredSession.Id}", guest.Token));
+            board.EnsureSuccessStatusCode();
+            Assert.False((await board.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("surveyEnabled").GetBoolean());
+            var pending = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/me/pending-surveys", admin));
+            pending.EnsureSuccessStatusCode();
+            Assert.Equal(0, (await pending.Content.ReadFromJsonAsync<JsonElement>()).GetArrayLength());
+
+            var newSession = await CreateSessionAsync(admin);
+            Assert.False(newSession.SurveyEnabled);
+            var closedInProgress = await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{inProgressSession.Id}/close", admin, new { }));
+            closedInProgress.EnsureSuccessStatusCode();
+            Assert.False((await closedInProgress.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("surveyEnabled").GetBoolean());
+            (await _client.SendAsync(Authorized(HttpMethod.Patch, $"/api/sessions/{newSession.Id}/close", admin, new { })))
+                .EnsureSuccessStatusCode();
+            var overview = await _client.SendAsync(Authorized(HttpMethod.Get, "/api/research/overview", admin));
+            overview.EnsureSuccessStatusCode();
+            var research = await overview.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal(2, research.GetProperty("sessions").GetInt32());
+            Assert.Equal(1, research.GetProperty("receivedResponses").GetInt32());
+            Assert.Equal(1, research.GetProperty("questionnaire").GetProperty("count").GetInt32());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("SURVEY_COLLECTION_ENABLED", previous);
+        }
+    }
+
+    [Fact]
     public async Task ExistingRatingsStaySeparateFromSusAndUesResults()
     {
         var admin = await LoginAsync("marcos");

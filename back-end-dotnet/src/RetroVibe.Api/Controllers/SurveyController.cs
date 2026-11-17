@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using RetroVibe.Api.Auth;
+using RetroVibe.Application.Support;
 using RetroVibe.Domain.Entities;
 using RetroVibe.Infrastructure.Persistence;
 using RetroVibe.Infrastructure.Persistence.Rows;
@@ -25,7 +26,9 @@ public sealed class SurveyController(RetroVibeDbContext db) : ControllerBase
         var role = ResponseRole(session, User.GetUserId(), User.GetAccessLevel(), User.GetAllowedSessionId());
         if (role is null) return Forbid();
         var completed = await db.SurveyResponses.AnyAsync(r => r.SessionId == sessionId && r.RespondentId == User.GetUserId(), ct);
-        return Ok(new { enabled = session.SurveyEnabled, open = session.SurveyEnabled && session.Status == SessionStatus.Completed,
+        return Ok(new { collectionEnabled = SurveyCollection.IsEnabled,
+            enabled = SurveyCollection.IsEnabled && session.SurveyEnabled,
+            open = SurveyCollection.IsEnabled && session.SurveyEnabled && session.Status == SessionStatus.Completed,
             completed, role, sessionDate = session.ClosedAt ?? session.CreatedAt,
             questionnaireVersion = SurveyQuestionnaire.Version });
     }
@@ -37,6 +40,8 @@ public sealed class SurveyController(RetroVibeDbContext db) : ControllerBase
         if (session is null) return NotFound();
         var role = ResponseRole(session, User.GetUserId(), User.GetAccessLevel(), User.GetAllowedSessionId());
         if (role is null) return Forbid();
+        if (!SurveyCollection.IsEnabled)
+            return Conflict(new { error = "SURVEY_CLOSED", message = "A coleta de respostas foi encerrada" });
         if (!session.SurveyEnabled || session.Status != SessionStatus.Completed)
             return Conflict(new { error = "SURVEY_NOT_OPEN", message = "O questionário abre após o encerramento da sessão" });
         if (request.Ratings?.Length != SurveyQuestionnaire.RequiredRatings(role) ||
