@@ -240,14 +240,14 @@ function ThemeComparisonPanel({ comparison }: { comparison: ThemeComparison }) {
   return <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
     <h2 className="font-bold text-slate-800">Comparação por tema da sessão</h2>
     <p className="mt-1 text-sm text-slate-500">Tema selecionado na criação da retrospectiva · respostas do questionário atual.</p>
-    <div className="mt-4 grid gap-4 lg:grid-cols-2">
-      {([['Com tema', comparison.withTheme], ['Sem tema', comparison.withoutTheme]] as const).map(([title, group]) =>
+    <div className="mt-4 grid gap-4">
+      {([['Com tema', 'com tema', comparison.withTheme], ['Sem tema', 'sem tema', comparison.withoutTheme]] as const).map(([title, suffix, group]) =>
         <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
           <h3 className="font-bold text-slate-800">{title}</h3>
           <p className="mt-1 text-sm text-slate-500">{group.sessions} sessões · {group.responses} respostas</p>
-          <div className="mt-3 grid gap-3">
-            <ScaleCard title="Facilitadores" stats={group.facilitator} facilitator version={3} />
-            <ScaleCard title="Convidados" stats={group.participants} facilitator={false} version={3} />
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <ScaleCard title={`Facilitadores ${suffix}`} stats={group.facilitator} facilitator version={3} />
+            <ScaleCard title={`Convidados ${suffix}`} stats={group.participants} facilitator={false} version={3} />
           </div>
         </div>) }
     </div>
